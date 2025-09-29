@@ -1,5 +1,7 @@
 import { parseISO, format } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
+import * as tz from "date-fns-tz";
+
+const { utcToZonedTime } = tz;
 
 export default function BookingTable({
   records,

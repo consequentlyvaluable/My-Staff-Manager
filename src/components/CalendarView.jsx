@@ -1,12 +1,17 @@
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse as dateFnsParse, startOfWeek, getDay } from "date-fns";
 import { parseISO } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
+import * as tz from "date-fns-tz";
+
+const { utcToZonedTime } = tz;
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 // Localizer setup
-const locales = { "en-US": enUS };
+const locales = {
+  "en-US": enUS,
+  
+};
 const localizer = dateFnsLocalizer({
   format,
   parse: dateFnsParse,
@@ -22,17 +27,18 @@ export default function CalendarView({
   setCurrentDate,
   currentView,
   setCurrentView,
-  timeZone, // 👈 add this as a prop
+  timeZone, 
 }) {
   const events = records.map((r) => {
+    
     const start = utcToZonedTime(parseISO(r.start), timeZone);
     const end = utcToZonedTime(parseISO(r.end), timeZone);
     return {
       id: r.id,
-      title: `${r.name} (${r.type === "Vacation" ? "🌴" : "✈️"})`,
+      title: `${r.name} - ${r.type} ${r.type === "Vacation" ? "🌴" : "✈️"}`,
       start,
       end,
-      allDay: true,
+      allDay: false,
       type: r.type,
     };
   });

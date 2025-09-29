@@ -8,7 +8,9 @@ import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import { employees } from "./data/employees";
 import { format, isAfter, isBefore, isEqual, parseISO } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
+import * as tz from "date-fns-tz";
+
+const { utcToZonedTime } = tz;
 
 
 export default function App() {
