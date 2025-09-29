@@ -1,5 +1,7 @@
-import { parseISO, format } from "date-fns";
-import * as tz from "date-fns-tz";
+import { parseISO } from "date-fns";
+import utcToZonedTime from "date-fns-tz/utcToZonedTime";
+
+// ...rest of your imports
 
 const { utcToZonedTime } = tz;
 
@@ -11,7 +13,7 @@ export default function BookingTable({
   setSort,
   startEdit,
   deleteRecord,
-  timeZone, // 👈 pass this in as a prop from App.jsx
+  timeZone,
 }) {
   const toggleSort = (column) => {
     setSort((prev) => {
