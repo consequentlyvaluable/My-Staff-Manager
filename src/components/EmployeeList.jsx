@@ -9,14 +9,14 @@ export default function EmployeeList({
   deleteRecord,
 }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow">
-      <h2 className="text-xl font-semibold text-gray-700 mb-4">Employees</h2>
+    <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+      <h2 className="text-xl font-semibold text-gray-700 mb-4 dark:text-gray-200">Employees</h2>
 
       {/* Search bar */}
       <input
         type="text"
         placeholder="Search employees..."
-        className="border rounded px-3 py-2 mb-4 w-full md:w-1/2"
+        className="border rounded px-3 py-2 mb-4 w-full md:w-1/2 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -30,11 +30,11 @@ export default function EmployeeList({
             return (
               <li
                 key={emp}
-                className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition"
+                className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-800">{emp}</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="font-medium text-gray-800 dark:text-gray-100">{emp}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300">
                     {empBookings.length} booking
                     {empBookings.length !== 1 && "s"}
                   </span>
@@ -42,11 +42,11 @@ export default function EmployeeList({
 
                 {/* Show bookings if any */}
                 {empBookings.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm text-gray-700">
+                  <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
                     {empBookings.map((b) => (
                       <li
                         key={b.id}
-                        className="flex items-center justify-between border-b last:border-0 py-1"
+                        className="flex items-center justify-between border-b last:border-0 py-1 border-gray-200 dark:border-gray-600"
                       >
                         <span>
                           {b.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}{" "}

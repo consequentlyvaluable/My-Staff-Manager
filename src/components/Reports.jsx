@@ -44,12 +44,12 @@ export default function Reports({ records }) {
   }, [records]);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow space-y-8">
-      <h2 className="text-2xl font-semibold text-gray-700 mb-6">Reports 📊</h2>
+    <div className="bg-white p-6 rounded-2xl shadow space-y-8 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+      <h2 className="text-2xl font-semibold text-gray-700 mb-6 dark:text-gray-200">Reports 📊</h2>
 
       {/* Bookings per Employee */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-3">
+        <h3 className="text-lg font-medium text-gray-700 mb-3 dark:text-gray-200">
           Bookings per Employee
         </h3>
         <BarChart width={800} height={300} data={bookingsPerEmployee}>
@@ -64,7 +64,7 @@ export default function Reports({ records }) {
 
       {/* Vacation vs Travel */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-3">
+        <h3 className="text-lg font-medium text-gray-700 mb-3 dark:text-gray-200">
           Vacation vs Travel
         </h3>
         <PieChart width={400} height={300}>
@@ -91,7 +91,7 @@ export default function Reports({ records }) {
 
       {/* Monthly Distribution */}
       <div>
-        <h3 className="text-lg font-medium text-gray-700 mb-3">
+        <h3 className="text-lg font-medium text-gray-700 mb-3 dark:text-gray-200">
           Monthly Distribution of Bookings
         </h3>
         <LineChart width={800} height={300} data={monthlyDistribution}>
