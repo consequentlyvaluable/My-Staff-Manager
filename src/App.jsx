@@ -12,6 +12,12 @@ import { isAfter, isBefore, isEqual } from "date-fns";
 
 export default function App() {
   const [records, setRecords] = useState([]);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("theme");
+    if (stored) return stored === "dark";
+    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+  });
   const [form, setForm] = useState({
     name: employees[0],
     type: "Vacation",
@@ -25,6 +31,17 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (darkMode) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [darkMode]);
 
   // localStorage sync
   useEffect(() => {
@@ -133,8 +150,12 @@ export default function App() {
   }, [records, search, sort]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      <Header onSidebarToggle={() => setSidebarOpen(true)} />
+    <div className="min-h-screen flex flex-col bg-gray-100 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100">
+      <Header
+        onSidebarToggle={() => setSidebarOpen(true)}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+      />
       <div className="flex flex-1">
         <Sidebar
           currentPage={currentPage}
@@ -142,7 +163,7 @@ export default function App() {
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
-        <main className="flex-1 p-6 md:ml-0">
+        <main className="flex-1 p-6 md:ml-0 transition-colors duration-300">
           {currentPage === "dashboard" && (
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <div className="md:col-span-2 space-y-6">

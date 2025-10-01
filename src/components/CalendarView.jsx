@@ -37,8 +37,8 @@ export default function CalendarView({
     }));
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow">
-      <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center gap-2">
+    <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+      <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center gap-2 dark:text-gray-200">
         📅 Calendar View
       </h2>
       <Calendar
@@ -53,6 +53,7 @@ export default function CalendarView({
         onView={(view) => setCurrentView(view)}
         views={["month", "week", "day", "agenda"]}
         defaultView="month"
+        className="rounded-xl border border-gray-200 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
         eventPropGetter={(event) => ({
           style: {
             backgroundColor: event.type === "Vacation" ? "#22c55e" : "#3b82f6",
