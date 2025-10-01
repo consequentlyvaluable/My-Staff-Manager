@@ -38,7 +38,9 @@ export default function BookingForm({
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         >
           {employees.map((emp) => (
-            <option key={emp}>{emp}</option>
+            <option key={emp.id} value={emp.name}>
+              {emp.name}
+            </option>
           ))}
         </select>
       </div>

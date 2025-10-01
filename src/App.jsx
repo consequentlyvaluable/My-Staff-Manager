@@ -18,8 +18,10 @@ export default function App() {
     if (stored) return stored === "dark";
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
+  const defaultEmployeeName = employees[0]?.name ?? "";
+
   const [form, setForm] = useState({
-    name: employees[0],
+    name: defaultEmployeeName,
     type: "Vacation",
     start: "",
     end: "",
@@ -93,7 +95,7 @@ export default function App() {
     } else {
       setRecords((prev) => [...prev, { ...form, id: crypto.randomUUID() }]);
     }
-    setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+    setForm({ name: defaultEmployeeName, type: "Vacation", start: "", end: "" });
   };
 
   const deleteRecord = (id) => {
@@ -117,7 +119,7 @@ export default function App() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+    setForm({ name: defaultEmployeeName, type: "Vacation", start: "", end: "" });
   };
 
   // search + sort

@@ -1,4 +1,4 @@
-export const employees = [
+const rawEmployees = [
   "1. Allan Davidovits",
   "2. Alvin Faett",
   "3. Andrea Castillo",
@@ -49,3 +49,35 @@ export const employees = [
   "48. Yolanda Atzingen",
   "49. Zain Ali",
 ];
+
+const toAlpha = (value) => value.replace(/[^a-z]/gi, "");
+
+const createUsername = (fullName, id) => {
+  const [firstName = "", ...rest] = fullName.split(" ");
+  const base = `${firstName.charAt(0)}${rest.join("")}`;
+  const sanitized = toAlpha(base).toLowerCase() || toAlpha(fullName).toLowerCase();
+  const handle = sanitized || `team${String(id).padStart(2, "0")}`;
+  return `${handle}${String(id).padStart(2, "0")}`;
+};
+
+const createPassword = (fullName, id) => {
+  const sanitized = toAlpha(fullName).toUpperCase();
+  const suffix = sanitized.slice(-2).padEnd(2, "X");
+  return `MsM!${String(id).padStart(2, "0")}${suffix}`;
+};
+
+export const employees = rawEmployees.map((entry, index) => {
+  const id = index + 1;
+  const [, nameWithoutNumber = entry] = entry.split(/\d+\.\s+/);
+  const fullName = nameWithoutNumber.trim();
+  const username = createUsername(fullName, id);
+  const password = createPassword(fullName, id);
+  return {
+    id,
+    name: entry,
+    fullName,
+    email: `${username}@example.com`,
+    username,
+    password,
+  };
+});
