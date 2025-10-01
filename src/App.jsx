@@ -7,10 +7,7 @@ import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import { employees } from "./data/employees";
-import { format, isAfter, isBefore, isEqual, parseISO } from "date-fns";
-import * as tz from "date-fns-tz";
-
-const { utcToZonedTime } = tz;
+import { isAfter, isBefore, isEqual } from "date-fns";
 
 
 export default function App() {
@@ -22,9 +19,6 @@ export default function App() {
     end: "",
   });
   const [editingId, setEditingId] = useState(null);
-  const [timeZone, setTimeZone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ name: null, start: null, end: null });
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -142,25 +136,6 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Header onSidebarToggle={() => setSidebarOpen(true)} />
       <div className="flex flex-1">
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600">
-            Time Zone
-          </label>
-          <select
-            className="w-full border p-2 rounded"
-            value={timeZone}
-            onChange={(e) => setTimeZone(e.target.value)}
-          >
-            <option value="America/New_York">America/New_York</option>
-            <option value="America/Chicago">America/Chicago</option>
-            <option value="America/Los_Angeles">America/Los_Angeles</option>
-            <option value="Europe/London">Europe/London</option>
-            <option value="Europe/Berlin">Europe/Berlin</option>
-            <option value="Asia/Tokyo">Asia/Tokyo</option>
-            <option value="UTC">UTC</option>
-          </select>
-        </div>
-
         <Sidebar
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
@@ -198,7 +173,6 @@ export default function App() {
                   setCurrentDate={setCurrentDate}
                   currentView={currentView}
                   setCurrentView={setCurrentView}
-                  timeZone={timeZone}
                 />
               </div>
             </div>
