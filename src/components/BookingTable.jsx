@@ -1,9 +1,4 @@
-import { parseISO } from "date-fns";
-import utcToZonedTime from "date-fns-tz/utcToZonedTime";
-
-// ...rest of your imports
-
-const { utcToZonedTime } = tz;
+import { format, parseISO } from "date-fns";
 
 export default function BookingTable({
   records,
@@ -13,7 +8,6 @@ export default function BookingTable({
   setSort,
   startEdit,
   deleteRecord,
-  timeZone,
 }) {
   const toggleSort = (column) => {
     setSort((prev) => {
@@ -72,13 +66,8 @@ export default function BookingTable({
         </thead>
         <tbody>
           {records.map((r) => {
-            // ✅ do calculations here, not inline in JSX
-            const zonedStart = r.start
-              ? utcToZonedTime(parseISO(r.start), timeZone)
-              : null;
-            const zonedEnd = r.end
-              ? utcToZonedTime(parseISO(r.end), timeZone)
-              : null;
+            const startDate = r.start ? parseISO(r.start) : null;
+            const endDate = r.end ? parseISO(r.end) : null;
 
             return (
               <tr
@@ -96,14 +85,10 @@ export default function BookingTable({
                   </span>
                 </td>
                 <td className="border p-2 text-center">
-                  {zonedStart
-                    ? format(zonedStart, "MMM d, yyyy", { timeZone })
-                    : "-"}
+                  {startDate ? format(startDate, "MMM d, yyyy") : "-"}
                 </td>
                 <td className="border p-2 text-center">
-                  {zonedEnd
-                    ? format(zonedEnd, "MMM d, yyyy", { timeZone })
-                    : "-"}
+                  {endDate ? format(endDate, "MMM d, yyyy") : "-"}
                 </td>
                 <td className="border p-2 text-center space-x-2">
                   <button

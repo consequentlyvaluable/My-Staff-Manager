@@ -1,9 +1,6 @@
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse as dateFnsParse, startOfWeek, getDay } from "date-fns";
 import { parseISO } from "date-fns";
-import * as tz from "date-fns-tz";
-
-const { utcToZonedTime } = tz;
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
@@ -27,21 +24,17 @@ export default function CalendarView({
   setCurrentDate,
   currentView,
   setCurrentView,
-  timeZone, 
 }) {
-  const events = records.map((r) => {
-    
-    const start = utcToZonedTime(parseISO(r.start), timeZone);
-    const end = utcToZonedTime(parseISO(r.end), timeZone);
-    return {
+  const events = records
+    .filter((r) => r.start && r.end)
+    .map((r) => ({
       id: r.id,
       title: `${r.name} - ${r.type} ${r.type === "Vacation" ? "🌴" : "✈️"}`,
-      start,
-      end,
+      start: parseISO(r.start),
+      end: parseISO(r.end),
       allDay: false,
       type: r.type,
-    };
-  });
+    }));
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow">
