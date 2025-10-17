@@ -10,6 +10,9 @@ export default function BookingForm({
   isSaving = false,
   isClearing = false,
 }) {
+  const employeeInputId = "booking-form-employee";
+  const employeeListId = "booking-form-employee-options";
+
   return (
     <div className="bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <div className="flex items-center justify-between">
@@ -29,18 +32,26 @@ export default function BookingForm({
 
       {/* Employee */}
       <div>
-        <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">
+        <label
+          className="block text-sm font-medium text-gray-600 dark:text-gray-300"
+          htmlFor={employeeInputId}
+        >
           Employee
         </label>
-        <select
+        <input
+          id={employeeInputId}
+          list={employeeListId}
+          type="text"
+          placeholder="Select or type an employee"
           className="w-full border p-2 rounded bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-        >
+        />
+        <datalist id={employeeListId}>
           {employees.map((emp) => (
-            <option key={emp}>{emp}</option>
+            <option key={emp} value={emp} />
           ))}
-        </select>
+        </datalist>
       </div>
 
       {/* Type */}
