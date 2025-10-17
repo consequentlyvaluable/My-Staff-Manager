@@ -8,10 +8,22 @@ import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import { employees } from "./data/employees";
 import { isAfter, isBefore, isEqual } from "date-fns";
+import {
+  fetchRecords,
+  createRecord,
+  updateRecord,
+  removeRecord,
+  removeRecords,
+  isSupabaseConfigured,
+} from "./lib/supabaseClient";
 
 
 export default function App() {
   const [records, setRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -43,14 +55,45 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // localStorage sync
+  // Supabase sync
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("records")) || [];
-    setRecords(saved);
+    let ignore = false;
+
+    const loadRecords = async () => {
+      if (!isSupabaseConfigured) {
+        setErrorMessage(
+          "Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+        );
+        setLoadingRecords(false);
+        return;
+      }
+
+      setLoadingRecords(true);
+      try {
+        const data = await fetchRecords();
+        if (!ignore) {
+          setRecords(data);
+          setErrorMessage(null);
+        }
+      } catch (error) {
+        if (!ignore) {
+          console.error("Failed to load records", error);
+          setErrorMessage("Failed to load records from Supabase.");
+          setRecords([]);
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingRecords(false);
+        }
+      }
+    };
+
+    loadRecords();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
-  useEffect(() => {
-    localStorage.setItem("records", JSON.stringify(records));
-  }, [records]);
 
   // validation
   const validateRecord = () => {
@@ -77,31 +120,67 @@ export default function App() {
   };
 
   // handlers
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const error = validateRecord();
     if (error) {
       alert(error);
       return;
     }
-    if (editingId) {
-      setRecords((prev) =>
-        prev.map((rec) =>
-          rec.id === editingId ? { ...form, id: editingId } : rec
-        )
-      );
-      setEditingId(null);
-    } else {
-      setRecords((prev) => [...prev, { ...form, id: crypto.randomUUID() }]);
+    if (!isSupabaseConfigured) {
+      alert("Supabase is not configured. Unable to save record.");
+      return;
     }
-    setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+
+    setIsSaving(true);
+    try {
+      if (editingId) {
+        const updated = await updateRecord(editingId, {
+          name: form.name,
+          type: form.type,
+          start: form.start,
+          end: form.end,
+        });
+        setRecords((prev) =>
+          prev.map((rec) => (rec.id === editingId ? updated ?? rec : rec))
+        );
+        setEditingId(null);
+      } else {
+        const created = await createRecord({
+          name: form.name,
+          type: form.type,
+          start: form.start,
+          end: form.end,
+        });
+        if (created) {
+          setRecords((prev) => [...prev, created]);
+        }
+      }
+      setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+    } catch (err) {
+      console.error("Failed to save record", err);
+      alert("Failed to save record. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const deleteRecord = (id) => {
+  const deleteRecord = async (id) => {
     const rec = records.find((r) => r.id === id);
     if (!rec) return;
     if (confirm(`Delete booking for ${rec.name}?`)) {
-      setRecords((prev) => prev.filter((r) => r.id !== id));
-      if (editingId === id) cancelEdit();
+      if (!isSupabaseConfigured) {
+        alert("Supabase is not configured. Unable to delete record.");
+        return;
+      }
+
+      try {
+        await removeRecord(id);
+        setRecords((prev) => prev.filter((r) => r.id !== id));
+        if (editingId === id) cancelEdit();
+      } catch (error) {
+        console.error("Failed to delete record", error);
+        alert("Failed to delete record. Please try again.");
+      }
     }
   };
 
@@ -118,6 +197,27 @@ export default function App() {
   const cancelEdit = () => {
     setEditingId(null);
     setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+  };
+
+  const clearAll = async () => {
+    if (records.length === 0) return;
+    if (!confirm("Clear all bookings?")) return;
+    if (!isSupabaseConfigured) {
+      alert("Supabase is not configured. Unable to clear records.");
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      await removeRecords(records.map((record) => record.id));
+      setRecords([]);
+      cancelEdit();
+    } catch (error) {
+      console.error("Failed to clear records", error);
+      alert("Failed to clear records. Please try again.");
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   // search + sort
@@ -174,18 +274,31 @@ export default function App() {
                   handleSubmit={handleSubmit}
                   editingId={editingId}
                   cancelEdit={cancelEdit}
-                  clearAll={() => setRecords([])}
+                  clearAll={clearAll}
                   records={records}
+                  isSaving={isSaving}
+                  isClearing={isClearing}
                 />
-                <BookingTable
-                  records={filteredSortedRecords}
-                  search={search}
-                  setSearch={setSearch}
-                  sort={sort}
-                  setSort={setSort}
-                  startEdit={startEdit}
-                  deleteRecord={deleteRecord}
-                />
+                {errorMessage && (
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
+                    {errorMessage}
+                  </div>
+                )}
+                {loadingRecords ? (
+                  <div className="bg-white p-6 rounded-2xl shadow text-center text-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                    Loading records...
+                  </div>
+                ) : (
+                  <BookingTable
+                    records={filteredSortedRecords}
+                    search={search}
+                    setSearch={setSearch}
+                    sort={sort}
+                    setSort={setSort}
+                    startEdit={startEdit}
+                    deleteRecord={deleteRecord}
+                  />
+                )}
               </div>
               <div className="md:col-span-3">
                 <CalendarView
