@@ -38,20 +38,25 @@ export default function BookingForm({
         >
           Employee
         </label>
-        <input
-          id={employeeInputId}
-          list={employeeListId}
-          type="text"
-          placeholder="Select or type an employee"
-          className="w-full border p-2 rounded bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <datalist id={employeeListId}>
-          {employees.map((emp) => (
-            <option key={emp} value={emp} />
-          ))}
-        </datalist>
+        <div className="relative">
+          <input
+            id={employeeInputId}
+            list={employeeListId}
+            type="text"
+            placeholder="Select or type an employee"
+            className="w-full border py-2 pl-3 pr-10 rounded bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 dark:text-gray-300">
+            ▼
+          </span>
+          <datalist id={employeeListId}>
+            {employees.map((emp) => (
+              <option key={emp} value={emp} />
+            ))}
+          </datalist>
+        </div>
       </div>
 
       {/* Type */}
