@@ -31,7 +31,7 @@ export default function App() {
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
   const [form, setForm] = useState({
-    name: employees[0],
+    name: "",
     type: "Vacation",
     start: "",
     end: "",
@@ -97,6 +97,7 @@ export default function App() {
 
   // validation
   const validateRecord = () => {
+    if (!form.name) return "Please select an employee.";
     if (!form.start || !form.end)
       return "Both start and end dates are required.";
     const startDate = new Date(form.start);
@@ -155,7 +156,7 @@ export default function App() {
           setRecords((prev) => [...prev, created]);
         }
       }
-      setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+      setForm({ name: "", type: "Vacation", start: "", end: "" });
     } catch (err) {
       console.error("Failed to save record", err);
       alert("Failed to save record. Please try again.");
@@ -196,7 +197,7 @@ export default function App() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ name: employees[0], type: "Vacation", start: "", end: "" });
+    setForm({ name: "", type: "Vacation", start: "", end: "" });
   };
 
   const clearAll = async () => {
