@@ -13,7 +13,7 @@ export default function Header({ onSidebarToggle, darkMode, onToggleDarkMode }) 
           </div>
         </button>
         <h1 className="text-2xl font-bold text-purple-800 dark:text-purple-200">
-          Marcela&apos;s Employee Manager
+          Zain's TeamBud
         </h1>
       </div>
       <div className="flex items-center gap-4">
