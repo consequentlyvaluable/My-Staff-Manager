@@ -1,16 +1,22 @@
 # React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project now persists booking data in [Supabase](https://supabase.com/). To run the app locally you will need a Supabase project with a `records` table that includes at least the following columns:
 
-Currently, two official plugins are available:
+- `id` – `uuid` primary key with a default value of `gen_random_uuid()`
+- `name` – `text`
+- `type` – `text`
+- `start` – `date`
+- `end` – `date`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Create a `.env` file based on `.env.example` and populate the Supabase credentials:
 
-## React Compiler
+```bash
+cp .env.example .env
+```
 
-The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+When the environment variables are present the app will read, create, update, and delete bookings through Supabase's REST API. If the variables are missing the UI will indicate that Supabase is not configured.
