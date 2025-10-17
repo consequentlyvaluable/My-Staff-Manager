@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-
 export default function BookingForm({
   form,
   setForm,
@@ -9,6 +7,8 @@ export default function BookingForm({
   cancelEdit,
   clearAll,
   records,
+  isSaving = false,
+  isClearing = false,
 }) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
@@ -82,20 +82,24 @@ export default function BookingForm({
 
       {/* Submit button */}
       <button
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg shadow flex items-center justify-center gap-2"
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white py-2.5 rounded-lg shadow flex items-center justify-center gap-2"
         onClick={handleSubmit}
+        disabled={isSaving}
       >
         <span className="text-lg font-bold">{editingId ? "✓" : "+"}</span>
-        <span>{editingId ? "Update" : "Add"}</span>
+        <span>
+          {isSaving ? (editingId ? "Saving..." : "Saving...") : editingId ? "Update" : "Add"}
+        </span>
       </button>
 
       {/* Clear All */}
       {records.length > 0 && (
         <button
-          className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg shadow text-sm"
+          className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white py-2 rounded-lg shadow text-sm"
           onClick={clearAll}
+          disabled={isClearing}
         >
-          Clear All
+          {isClearing ? "Clearing..." : "Clear All"}
         </button>
       )}
     </div>
