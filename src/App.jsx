@@ -7,6 +7,7 @@ import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import { employees } from "./data/employees";
+import LoginPage from "./components/LoginPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -16,6 +17,15 @@ import {
   removeRecords,
   isSupabaseConfigured,
 } from "./lib/supabaseClient";
+
+function createEmptyForm(name = "") {
+  return {
+    name,
+    type: "Vacation",
+    start: "",
+    end: "",
+  };
+}
 
 
 export default function App() {
@@ -30,12 +40,8 @@ export default function App() {
     if (stored) return stored === "dark";
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
-  const [form, setForm] = useState({
-    name: "",
-    type: "Vacation",
-    start: "",
-    end: "",
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [form, setForm] = useState(() => createEmptyForm());
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ name: null, start: null, end: null });
@@ -58,6 +64,15 @@ export default function App() {
   // Supabase sync
   useEffect(() => {
     let ignore = false;
+
+    if (!currentUser) {
+      setRecords([]);
+      setLoadingRecords(false);
+      setErrorMessage(null);
+      return () => {
+        ignore = true;
+      };
+    }
 
     const loadRecords = async () => {
       if (!isSupabaseConfigured) {
@@ -93,7 +108,12 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (editingId) return;
+    setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
+  }, [currentUser, editingId]);
 
   // validation
   const validateRecord = () => {
@@ -156,7 +176,7 @@ export default function App() {
           setRecords((prev) => [...prev, created]);
         }
       }
-      setForm({ name: "", type: "Vacation", start: "", end: "" });
+      setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
     } catch (err) {
       console.error("Failed to save record", err);
       alert("Failed to save record. Please try again.");
@@ -197,7 +217,7 @@ export default function App() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ name: "", type: "Vacation", start: "", end: "" });
+    setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   };
 
   const clearAll = async () => {
@@ -250,12 +270,44 @@ export default function App() {
     return filtered;
   }, [records, search, sort]);
 
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    setCurrentPage("dashboard");
+    setSidebarOpen(false);
+    setSearch("");
+    setSort({ name: null, start: null, end: null });
+    setForm(createEmptyForm(user.employeeLabel));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setCurrentPage("dashboard");
+    setSidebarOpen(false);
+    setSearch("");
+    setSort({ name: null, start: null, end: null });
+    setEditingId(null);
+    setForm(createEmptyForm());
+    setRecords([]);
+  };
+
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100">
       <Header
         onSidebarToggle={() => setSidebarOpen(true)}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        user={currentUser}
+        onLogout={handleLogout}
       />
       <div className="flex flex-1">
         <Sidebar
