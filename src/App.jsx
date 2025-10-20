@@ -7,6 +7,7 @@ import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import { employees } from "./data/employees";
+import LoginPage from "./components/LoginPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -15,7 +16,78 @@ import {
   removeRecord,
   removeRecords,
   isSupabaseConfigured,
+  signInEmployee,
+  signOutEmployee,
+  fetchEmployeeProfile,
+  restoreSession,
 } from "./lib/supabaseClient";
+
+const stripEmployeeLabel = (label) =>
+  typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
+
+const employeeLabelLookup = new Map(
+  employees.map((entry) => [stripEmployeeLabel(entry).toLowerCase(), entry])
+);
+
+const lookupEmployeeLabel = (value) => {
+  if (!value) return "";
+  return employeeLabelLookup.get(stripEmployeeLabel(value).toLowerCase()) ?? "";
+};
+
+const fallbackNameFromEmail = (email) => {
+  if (!email) return "Team member";
+  const localPart = email.split("@")[0] ?? "";
+  if (!localPart) return email;
+  const cleaned = localPart.replace(/[._-]+/g, " ").trim();
+  if (!cleaned) return email;
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const buildUserContext = (authUser, profile) => {
+  if (!authUser) return null;
+  const metadata = authUser.user_metadata ?? {};
+  const email = profile?.email || authUser.email || metadata.email || "";
+  const rawName =
+    (typeof profile?.display_name === "string" && profile.display_name.trim()) ||
+    (typeof metadata.full_name === "string" && metadata.full_name.trim()) ||
+    (typeof metadata.name === "string" && metadata.name.trim()) ||
+    (typeof metadata.display_name === "string" && metadata.display_name.trim()) ||
+    "";
+  const name = rawName || fallbackNameFromEmail(email);
+  const labelSources = [
+    profile?.employee_label,
+    metadata.employee_label,
+    metadata.full_name,
+    metadata.preferred_name,
+    rawName,
+    name,
+  ];
+  let employeeLabel = "";
+  for (const source of labelSources) {
+    employeeLabel = lookupEmployeeLabel(source);
+    if (employeeLabel) break;
+  }
+
+  return {
+    id: authUser.id,
+    name,
+    email,
+    employeeLabel,
+  };
+};
+
+function createEmptyForm(name = "") {
+  return {
+    name,
+    type: "Vacation",
+    start: "",
+    end: "",
+  };
+}
 
 
 export default function App() {
@@ -30,12 +102,8 @@ export default function App() {
     if (stored) return stored === "dark";
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
-  const [form, setForm] = useState({
-    name: "",
-    type: "Vacation",
-    start: "",
-    end: "",
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [form, setForm] = useState(() => createEmptyForm());
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ name: null, start: null, end: null });
@@ -55,9 +123,47 @@ export default function App() {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let ignore = false;
+
+    const hydrateUser = async () => {
+      try {
+        const session = await restoreSession();
+        if (!session?.user) return;
+        const profile = await fetchEmployeeProfile({
+          userId: session.user.id,
+          email: session.user.email,
+        });
+        if (ignore) return;
+        const userContext = buildUserContext(session.user, profile);
+        setCurrentUser(userContext);
+        setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
+      } catch (error) {
+        console.warn("Failed to restore Supabase session", error);
+      }
+    };
+
+    hydrateUser();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   // Supabase sync
   useEffect(() => {
     let ignore = false;
+
+    if (!currentUser) {
+      setRecords([]);
+      setLoadingRecords(false);
+      setErrorMessage(null);
+      return () => {
+        ignore = true;
+      };
+    }
 
     const loadRecords = async () => {
       if (!isSupabaseConfigured) {
@@ -93,7 +199,12 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (editingId) return;
+    setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
+  }, [currentUser, editingId]);
 
   // validation
   const validateRecord = () => {
@@ -156,7 +267,7 @@ export default function App() {
           setRecords((prev) => [...prev, created]);
         }
       }
-      setForm({ name: "", type: "Vacation", start: "", end: "" });
+      setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
     } catch (err) {
       console.error("Failed to save record", err);
       alert("Failed to save record. Please try again.");
@@ -197,7 +308,7 @@ export default function App() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ name: "", type: "Vacation", start: "", end: "" });
+    setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   };
 
   const clearAll = async () => {
@@ -250,12 +361,63 @@ export default function App() {
     return filtered;
   }, [records, search, sort]);
 
+  const handleLogin = async ({ email, password }) => {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        "Supabase is not configured. Please contact your administrator to enable sign-in."
+      );
+    }
+
+    const session = await signInEmployee({ email, password });
+    const profile = await fetchEmployeeProfile({
+      userId: session.user?.id,
+      email: session.user?.email || email,
+    });
+    const user = buildUserContext(session.user, profile);
+    setCurrentUser(user);
+    setCurrentPage("dashboard");
+    setSidebarOpen(false);
+    setSearch("");
+    setSort({ name: null, start: null, end: null });
+    setForm(createEmptyForm(user?.employeeLabel ?? ""));
+    return user;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOutEmployee();
+    } catch (error) {
+      console.warn("Supabase logout failed", error);
+    }
+
+    setCurrentUser(null);
+    setCurrentPage("dashboard");
+    setSidebarOpen(false);
+    setSearch("");
+    setSort({ name: null, start: null, end: null });
+    setEditingId(null);
+    setForm(createEmptyForm());
+    setRecords([]);
+  };
+
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100">
       <Header
         onSidebarToggle={() => setSidebarOpen(true)}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        user={currentUser}
+        onLogout={handleLogout}
       />
       <div className="flex flex-1">
         <Sidebar

@@ -1,4 +1,19 @@
-export default function Header({ onSidebarToggle, darkMode, onToggleDarkMode }) {
+export default function Header({
+  onSidebarToggle,
+  darkMode,
+  onToggleDarkMode,
+  user,
+  onLogout,
+}) {
+  const initials = user?.name
+    ? user.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("") || "TM"
+    : "TM";
+
   return (
     <header className="bg-white shadow px-6 py-4 flex items-center justify-between transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <div className="flex items-center gap-4">
@@ -33,9 +48,26 @@ export default function Header({ onSidebarToggle, darkMode, onToggleDarkMode }) 
             {darkMode ? "🌙" : "☀️"}
           </span>
         </button>
-        <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center">
-          M
-        </div>
+        {user && (
+          <>
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {user.name}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-sm font-semibold text-white">
+              {initials}
+            </div>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-full border border-purple-200 px-3 py-1 text-sm font-medium text-purple-700 transition hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:border-purple-500/40 dark:text-purple-200 dark:hover:bg-purple-500/20 dark:focus:ring-offset-gray-800"
+            >
+              Sign out
+            </button>
+          </>
+        )}
       </div>
     </header>
   );
