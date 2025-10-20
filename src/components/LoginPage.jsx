@@ -1,28 +1,28 @@
 import { useState } from "react";
-import { getUserByIdentifier } from "../data/users";
 
 export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
-    if (!identifier.trim() || !password.trim()) {
-      setError("Please enter both your username (or email) and password.");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both your email and password.");
       return;
     }
 
-    const user = getUserByIdentifier(identifier);
-
-    if (!user || user.password !== password) {
-      setError("Invalid credentials. Please check your details and try again.");
-      return;
+    setSubmitting(true);
+    try {
+      await onLogin({ email, password });
+    } catch (authError) {
+      setError(authError.message || "Unable to sign in. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    onLogin(user);
   };
 
   return (
@@ -55,20 +55,20 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label
-                htmlFor="identifier"
+                htmlFor="email"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-200"
               >
-                Username or email
+                Work email
               </label>
               <input
-                id="identifier"
-                name="identifier"
-                type="text"
-                autoComplete="username"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="e.g. andrea.castillo or andrea.castillo@example.com"
+                placeholder="Enter your work email"
               />
             </div>
             <div>
@@ -96,13 +96,11 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
             )}
             <button
               type="submit"
+              disabled={submitting}
               className="w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900"
             >
-              Sign in
+              {submitting ? "Signing in..." : "Sign in"}
             </button>
-            <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-              Default password: <span className="font-medium">Welcome123!</span>
-            </p>
           </form>
         </div>
       </div>

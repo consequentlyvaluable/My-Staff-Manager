@@ -16,7 +16,69 @@ import {
   removeRecord,
   removeRecords,
   isSupabaseConfigured,
+  signInEmployee,
+  signOutEmployee,
+  fetchEmployeeProfile,
+  getActiveSession,
 } from "./lib/supabaseClient";
+
+const stripEmployeeLabel = (label) =>
+  typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
+
+const employeeLabelLookup = new Map(
+  employees.map((entry) => [stripEmployeeLabel(entry).toLowerCase(), entry])
+);
+
+const lookupEmployeeLabel = (value) => {
+  if (!value) return "";
+  return employeeLabelLookup.get(stripEmployeeLabel(value).toLowerCase()) ?? "";
+};
+
+const fallbackNameFromEmail = (email) => {
+  if (!email) return "Team member";
+  const localPart = email.split("@")[0] ?? "";
+  if (!localPart) return email;
+  const cleaned = localPart.replace(/[._-]+/g, " ").trim();
+  if (!cleaned) return email;
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const buildUserContext = (authUser, profile) => {
+  if (!authUser) return null;
+  const metadata = authUser.user_metadata ?? {};
+  const email = profile?.email || authUser.email || metadata.email || "";
+  const rawName =
+    (typeof profile?.display_name === "string" && profile.display_name.trim()) ||
+    (typeof metadata.full_name === "string" && metadata.full_name.trim()) ||
+    (typeof metadata.name === "string" && metadata.name.trim()) ||
+    (typeof metadata.display_name === "string" && metadata.display_name.trim()) ||
+    "";
+  const name = rawName || fallbackNameFromEmail(email);
+  const labelSources = [
+    profile?.employee_label,
+    metadata.employee_label,
+    metadata.full_name,
+    metadata.preferred_name,
+    rawName,
+    name,
+  ];
+  let employeeLabel = "";
+  for (const source of labelSources) {
+    employeeLabel = lookupEmployeeLabel(source);
+    if (employeeLabel) break;
+  }
+
+  return {
+    id: authUser.id,
+    name,
+    email,
+    employeeLabel,
+  };
+};
 
 function createEmptyForm(name = "") {
   return {
@@ -60,6 +122,36 @@ export default function App() {
       localStorage.setItem("theme", "light");
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const session = getActiveSession();
+    if (!session?.user) return;
+
+    let ignore = false;
+
+    const hydrateUser = async () => {
+      try {
+        const profile = await fetchEmployeeProfile({
+          userId: session.user.id,
+          email: session.user.email,
+        });
+        if (ignore) return;
+        const userContext = buildUserContext(session.user, profile);
+        setCurrentUser(userContext);
+        setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
+      } catch (error) {
+        console.warn("Failed to restore Supabase session", error);
+      }
+    };
+
+    hydrateUser();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Supabase sync
   useEffect(() => {
@@ -270,16 +362,35 @@ export default function App() {
     return filtered;
   }, [records, search, sort]);
 
-  const handleLogin = (user) => {
+  const handleLogin = async ({ email, password }) => {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        "Supabase is not configured. Please contact your administrator to enable sign-in."
+      );
+    }
+
+    const session = await signInEmployee({ email, password });
+    const profile = await fetchEmployeeProfile({
+      userId: session.user?.id,
+      email: session.user?.email || email,
+    });
+    const user = buildUserContext(session.user, profile);
     setCurrentUser(user);
     setCurrentPage("dashboard");
     setSidebarOpen(false);
     setSearch("");
     setSort({ name: null, start: null, end: null });
-    setForm(createEmptyForm(user.employeeLabel));
+    setForm(createEmptyForm(user?.employeeLabel ?? ""));
+    return user;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOutEmployee();
+    } catch (error) {
+      console.warn("Supabase logout failed", error);
+    }
+
     setCurrentUser(null);
     setCurrentPage("dashboard");
     setSidebarOpen(false);
