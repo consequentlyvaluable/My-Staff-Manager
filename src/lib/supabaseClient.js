@@ -303,6 +303,99 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
   return null;
 };
 
+export const getActiveSession = () => getStoredSession();
+
+export const signInEmployee = async ({ email, password }) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const trimmedEmail = email?.trim().toLowerCase();
+  if (!trimmedEmail) {
+    throw new Error("Email is required.");
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify({ email: trimmedEmail, password }),
+  });
+
+  const session = await parseResponse(response);
+  if (!session?.user) {
+    throw new Error("Invalid authentication response from Supabase.");
+  }
+
+  persistSession(session);
+  return session;
+};
+
+export const signOutEmployee = async () => {
+  if (!isSupabaseConfigured) return;
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    persistSession(null);
+    return;
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  try {
+    await parseResponse(response);
+  } catch (error) {
+    // Logout should not block local cleanup. Log and continue.
+    console.warn("Supabase logout returned an error", error);
+  }
+
+  persistSession(null);
+};
+
+const fetchProfileByPath = async (path) => {
+  try {
+    const data = await request(path);
+    if (Array.isArray(data)) {
+      return data[0] ?? null;
+    }
+    return data ?? null;
+  } catch (error) {
+    console.warn(`Failed to fetch profile via ${path}`, error);
+    return null;
+  }
+};
+
+export const fetchEmployeeProfile = async ({ userId, email }) => {
+  if (!isSupabaseConfigured) {
+    return null;
+  }
+
+  if (userId) {
+    const profile = await fetchProfileByPath(
+      `employee_profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,employee_label,display_name,email`
+    );
+    if (profile) return profile;
+  }
+
+  if (email) {
+    const profile = await fetchProfileByPath(
+      `employee_profiles?email=eq.${encodeURIComponent(email.toLowerCase())}&select=user_id,employee_label,display_name,email`
+    );
+    if (profile) return profile;
+  }
+
+  return null;
+};
+
 export const fetchRecords = async () => {
   const params = new URLSearchParams({ select: "*", order: "start.asc" });
   const data = await request(`records?${params.toString()}`);
