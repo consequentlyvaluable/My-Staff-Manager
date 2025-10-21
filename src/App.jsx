@@ -19,7 +19,7 @@ import {
   signInEmployee,
   signOutEmployee,
   fetchEmployeeProfile,
-  getActiveSession,
+  restoreSession,
 } from "./lib/supabaseClient";
 
 const stripEmployeeLabel = (label) =>
@@ -126,13 +126,12 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    const session = getActiveSession();
-    if (!session?.user) return;
-
     let ignore = false;
 
     const hydrateUser = async () => {
       try {
+        const session = await restoreSession();
+        if (!session?.user) return;
         const profile = await fetchEmployeeProfile({
           userId: session.user.id,
           email: session.user.email,

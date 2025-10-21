@@ -1,5 +1,16 @@
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const DEFAULT_SUPABASE_URL = "https://qbjsccnnkwbrytywvruw.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFianNjY25ua3dicnl0eXd2cnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDI5OTMsImV4cCI6MjA3NjI3ODk5M30.J4qLO8w4kkO1V2B0PibVhWuOBROxsUzLcCUPMhvwFXU";
+
+const envSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
+const envSupabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+
+const hasEnvSupabaseConfig = Boolean(envSupabaseUrl && envSupabaseAnonKey);
+
+const supabaseUrl = hasEnvSupabaseConfig ? envSupabaseUrl : DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = hasEnvSupabaseConfig
+  ? envSupabaseAnonKey
+  : DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -45,15 +56,66 @@ const persistSession = (session) => {
   }
 };
 
-const getAuthHeaders = () => {
-  if (!isSupabaseConfigured) return {};
-  const session = getStoredSession();
-  if (session?.access_token) {
-    return {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${session.access_token}`,
-    };
+const SESSION_REFRESH_BUFFER_MS = 60 * 1000; // refresh one minute before expiry
+
+const shouldRefreshSession = (session) => {
+  if (!session?.access_token) return false;
+  if (!session?.expires_at) return false;
+  const expiresAtMs = session.expires_at * 1000;
+  return Date.now() >= expiresAtMs - SESSION_REFRESH_BUFFER_MS;
+};
+
+const refreshSession = async (refreshToken) => {
+  if (!refreshToken) {
+    throw new Error("Supabase session expired and cannot be refreshed.");
   }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  const session = await parseResponse(response);
+  if (!session?.user || !session?.access_token) {
+    throw new Error("Invalid refresh response from Supabase.");
+  }
+
+  persistSession(session);
+  return session;
+};
+
+const ensureActiveSession = async () => {
+  const session = getStoredSession();
+  if (!session) return null;
+  if (!shouldRefreshSession(session)) return session;
+
+  try {
+    return await refreshSession(session.refresh_token);
+  } catch (error) {
+    persistSession(null);
+    throw error;
+  }
+};
+
+const getAuthHeaders = async () => {
+  if (!isSupabaseConfigured) return {};
+
+  try {
+    const session = await ensureActiveSession();
+    if (session?.access_token) {
+      return {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session.access_token}`,
+      };
+    }
+  } catch (error) {
+    console.warn("Failed to refresh Supabase session", error);
+  }
+
   return baseHeaders;
 };
 
@@ -83,22 +145,162 @@ const parseResponse = async (response) => {
   return null;
 };
 
+const tryRefreshSession = async () => {
+  const session = getStoredSession();
+  if (!session?.refresh_token) return null;
+
+  try {
+    return await refreshSession(session.refresh_token);
+  } catch (error) {
+    console.warn("Supabase session refresh failed", error);
+    persistSession(null);
+    return null;
+  }
+};
+
 const request = async (path, { method = "GET", body, headers = {} } = {}) => {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase environment variables are not configured.");
   }
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+  const buildHeaders = async () => ({
+    "Content-Type": "application/json",
+    ...(await getAuthHeaders()),
+    ...headers,
+  });
+
+  let response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...headers,
-    },
+    headers: await buildHeaders(),
     body,
   });
 
+  if (response.status === 401) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed?.access_token) {
+      response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${refreshed.access_token}`,
+          ...headers,
+        },
+        body,
+      });
+    }
+  }
+
   return parseResponse(response);
+};
+
+export const getActiveSession = () => getStoredSession();
+
+export const restoreSession = async () => {
+  if (!isSupabaseConfigured) return null;
+
+  try {
+    return await ensureActiveSession();
+  } catch (error) {
+    console.warn("Unable to restore Supabase session", error);
+    return null;
+  }
+};
+
+export const signInEmployee = async ({ email, password }) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const trimmedEmail = email?.trim().toLowerCase();
+  if (!trimmedEmail) {
+    throw new Error("Email is required.");
+  }
+
+  const trimmedPassword = password?.trim();
+  if (!trimmedPassword) {
+    throw new Error("Password is required.");
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+  });
+
+  const session = await parseResponse(response);
+  if (!session?.user) {
+    throw new Error("Invalid authentication response from Supabase.");
+  }
+
+  persistSession(session);
+  return session;
+};
+
+export const signOutEmployee = async () => {
+  if (!isSupabaseConfigured) return;
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    persistSession(null);
+    return;
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  try {
+    await parseResponse(response);
+  } catch (error) {
+    // Logout should not block local cleanup. Log and continue.
+    console.warn("Supabase logout returned an error", error);
+  }
+
+  persistSession(null);
+};
+
+const fetchProfileByPath = async (path) => {
+  try {
+    const data = await request(path);
+    if (Array.isArray(data)) {
+      return data[0] ?? null;
+    }
+    return data ?? null;
+  } catch (error) {
+    console.warn(`Failed to fetch profile via ${path}`, error);
+    return null;
+  }
+};
+
+export const fetchEmployeeProfile = async ({ userId, email }) => {
+  if (!isSupabaseConfigured) {
+    return null;
+  }
+
+  if (userId) {
+    const profile = await fetchProfileByPath(
+      `employee_profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,employee_label,display_name,email`
+    );
+    if (profile) return profile;
+  }
+
+  if (email) {
+    const profile = await fetchProfileByPath(
+      `employee_profiles?email=eq.${encodeURIComponent(email.toLowerCase())}&select=user_id,employee_label,display_name,email`
+    );
+    if (profile) return profile;
+  }
+
+  return null;
 };
 
 export const getActiveSession = () => getStoredSession();
