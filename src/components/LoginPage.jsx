@@ -58,7 +58,7 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-200"
               >
-                Work email
+                User ID
               </label>
               <input
                 id="email"
@@ -68,7 +68,7 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="Enter your work email"
+                placeholder="Enter your User ID"
               />
             </div>
             <div>
