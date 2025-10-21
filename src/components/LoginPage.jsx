@@ -86,7 +86,7 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                placeholder="Enter your password"
+                placeholder="Enter your Password"
               />
             </div>
             {error && (
