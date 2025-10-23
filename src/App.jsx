@@ -6,6 +6,7 @@ import BookingTable from "./components/BookingTable";
 import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
+import ConfirmDialog from "./components/ConfirmDialog";
 import { employees } from "./data/employees";
 import LoginPage from "./components/LoginPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
@@ -96,6 +97,27 @@ const toIsoStringIfPossible = (value) => {
   return date.toISOString();
 };
 
+const formatDateForSummary = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const options = {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  return new Intl.DateTimeFormat(undefined, options).format(date);
+};
+
+const formatBookingRange = (start, end) => {
+  const formattedStart = formatDateForSummary(start);
+  const formattedEnd = formatDateForSummary(end);
+  if (formattedStart === "-" && formattedEnd === "-") return "-";
+  return `${formattedStart} → ${formattedEnd}`;
+};
+
 function createEmptyForm(name = "") {
   return {
     name,
@@ -110,8 +132,13 @@ export default function App() {
   const [records, setRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearError, setClearError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -305,24 +332,11 @@ export default function App() {
     }
   };
 
-  const deleteRecord = async (id) => {
+  const deleteRecord = (id) => {
     const rec = records.find((r) => r.id === id);
     if (!rec) return;
-    if (confirm(`Delete booking for ${rec.name}?`)) {
-      if (!isSupabaseConfigured) {
-        alert("Supabase is not configured. Unable to delete record.");
-        return;
-      }
-
-      try {
-        await removeRecord(id);
-        setRecords((prev) => prev.filter((r) => r.id !== id));
-        if (editingId === id) cancelEdit();
-      } catch (error) {
-        console.error("Failed to delete record", error);
-        alert("Failed to delete record. Please try again.");
-      }
-    }
+    setDeleteError("");
+    setPendingDelete(rec);
   };
 
   const startEdit = (record) => {
@@ -340,22 +354,73 @@ export default function App() {
     setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   };
 
-  const clearAll = async () => {
-    if (records.length === 0) return;
-    if (!confirm("Clear all bookings?")) return;
+  const cancelDelete = () => {
+    if (isDeleting) return;
+    setPendingDelete(null);
+    setDeleteError("");
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     if (!isSupabaseConfigured) {
-      alert("Supabase is not configured. Unable to clear records.");
+      setDeleteError("Supabase is not configured. Unable to delete record.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      await removeRecord(pendingDelete.id);
+      setRecords((prev) => prev.filter((r) => r.id !== pendingDelete.id));
+      if (editingId === pendingDelete.id) cancelEdit();
+      setPendingDelete(null);
+    } catch (error) {
+      console.error("Failed to delete record", error);
+      setDeleteError("Failed to delete record. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const clearAll = () => {
+    if (records.length === 0 || isClearing) return;
+    setClearError("");
+    setClearDialogOpen(true);
+  };
+
+  const cancelClear = () => {
+    if (isClearing) return;
+    setClearDialogOpen(false);
+    setClearError("");
+  };
+
+  const confirmClearAll = async () => {
+    if (records.length === 0) {
+      setClearDialogOpen(false);
+      setClearError("");
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      setClearError("Supabase is not configured. Unable to clear records.");
       return;
     }
 
     setIsClearing(true);
+    setClearError("");
+
+    const ids = records.map((record) => record.id);
+
     try {
-      await removeRecords(records.map((record) => record.id));
+      await removeRecords(ids);
+      setClearDialogOpen(false);
+      setClearError("");
       setRecords([]);
       cancelEdit();
     } catch (error) {
       console.error("Failed to clear records", error);
-      alert("Failed to clear records. Please try again.");
+      setClearError("Failed to clear records. Please try again.");
     } finally {
       setIsClearing(false);
     }
@@ -516,6 +581,88 @@ export default function App() {
           {currentPage === "reports" && <Reports records={records} />}
         </main>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete booking"
+        message={
+          pendingDelete
+            ? `Are you sure you want to delete the booking for ${pendingDelete.name}?`
+            : ""
+        }
+        confirmLabel="Delete booking"
+        cancelLabel="Keep booking"
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+        loading={isDeleting}
+        loadingLabel="Deleting..."
+        error={deleteError}
+      >
+        {pendingDelete && (
+          <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-700/60 dark:text-gray-200">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              {pendingDelete.name}
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-200">
+              {pendingDelete.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}
+            </p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-300">
+              {formatBookingRange(pendingDelete.start, pendingDelete.end)}
+            </p>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              This action cannot be undone.
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={clearDialogOpen}
+        title="Clear all bookings"
+        message={
+          records.length
+            ? `This will permanently remove ${records.length} booking${
+                records.length === 1 ? "" : "s"
+              }.`
+            : "There are no bookings to clear."
+        }
+        confirmLabel="Clear all bookings"
+        cancelLabel="Go back"
+        onCancel={cancelClear}
+        onConfirm={confirmClearAll}
+        loading={isClearing}
+        loadingLabel="Clearing..."
+        error={clearError}
+      >
+        {records.length > 0 && (
+          <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-700/60 dark:text-gray-200">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              {records.length === 1
+                ? "The following booking will be removed:"
+                : `The first ${Math.min(records.length, 3)} bookings to be removed:`}
+            </p>
+            <ul className="mt-3 space-y-2 text-xs text-gray-500 dark:text-gray-300">
+              {records.slice(0, 3).map((record) => (
+                <li key={record.id} className="rounded-lg bg-white/60 p-2 dark:bg-gray-800/50">
+                  <p className="font-medium text-gray-700 dark:text-gray-100">{record.name}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-400">
+                    {record.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-300">
+                    {formatBookingRange(record.start, record.end)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {records.length > 3 && (
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                + {records.length - 3} more booking{records.length - 3 === 1 ? "" : "s"}
+              </p>
+            )}
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              This action cannot be undone.
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
