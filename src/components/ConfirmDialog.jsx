@@ -9,6 +9,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   loading = false,
+  loadingLabel = "Processing...",
   error,
   children,
 }) {
@@ -68,7 +69,7 @@ export default function ConfirmDialog({
             disabled={loading}
             className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-500/70"
           >
-            {loading ? "Deleting..." : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>
