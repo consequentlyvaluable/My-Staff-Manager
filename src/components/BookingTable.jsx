@@ -1,4 +1,14 @@
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const hasTimeComponent =
+    typeof value === "string" ? value.includes("T") : true;
+  const pattern = hasTimeComponent ? "MMM d, yyyy h:mm a" : "MMM d, yyyy";
+  return format(date, pattern);
+};
 
 export default function BookingTable({
   records,
@@ -57,9 +67,6 @@ export default function BookingTable({
         </thead>
         <tbody>
           {records.map((r) => {
-            const startDate = r.start ? parseISO(r.start) : null;
-            const endDate = r.end ? parseISO(r.end) : null;
-
             return (
               <tr
                 key={r.id}
@@ -78,10 +85,10 @@ export default function BookingTable({
                   </span>
                 </td>
                 <td className="border border-gray-100 p-2 text-center text-gray-700 dark:border-gray-600 dark:text-gray-100">
-                  {startDate ? format(startDate, "MMM d, yyyy") : "-"}
+                  {formatDateTime(r.start)}
                 </td>
                 <td className="border border-gray-100 p-2 text-center text-gray-700 dark:border-gray-600 dark:text-gray-100">
-                  {endDate ? format(endDate, "MMM d, yyyy") : "-"}
+                  {formatDateTime(r.end)}
                 </td>
                 <td className="border border-gray-100 p-2 text-center space-x-2 dark:border-gray-600">
                   <button

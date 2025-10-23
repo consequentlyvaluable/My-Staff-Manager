@@ -1,5 +1,15 @@
 import { format } from "date-fns";
 
+const formatSummaryDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const hasTimeComponent =
+    typeof value === "string" ? value.includes("T") : true;
+  const pattern = hasTimeComponent ? "MMM d, h:mm a" : "MMM d";
+  return format(date, pattern);
+};
+
 export default function EmployeeList({
   employees,
   records,
@@ -50,8 +60,7 @@ export default function EmployeeList({
                       >
                         <span>
                           {b.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}{" "}
-                          ({format(new Date(b.start), "MMM d")} -{" "}
-                          {format(new Date(b.end), "MMM d")})
+                          ({formatSummaryDate(b.start)} - {formatSummaryDate(b.end)})
                         </span>
                         <div className="space-x-2">
                           <button
