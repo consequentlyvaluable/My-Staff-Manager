@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 
 const formatDateTime = (value) => {
@@ -19,6 +20,17 @@ export default function BookingTable({
   startEdit,
   deleteRecord,
 }) {
+  const [pulsingId, setPulsingId] = useState(null);
+  const pulseTimeoutRef = useRef();
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const toggleSort = (column) => {
     setSort((prev) => {
       const current = prev[column];
@@ -28,6 +40,19 @@ export default function BookingTable({
       else next = null;
       return { name: null, start: null, end: null, [column]: next };
     });
+  };
+
+  const handleEditClick = (record) => {
+    if (pulseTimeoutRef.current) {
+      clearTimeout(pulseTimeoutRef.current);
+    }
+
+    setPulsingId(record.id);
+    pulseTimeoutRef.current = setTimeout(() => {
+      setPulsingId(null);
+    }, 400);
+
+    startEdit(record);
   };
 
   return (
@@ -92,8 +117,10 @@ export default function BookingTable({
                 </td>
                 <td className="border border-gray-100 p-2 text-center space-x-2 dark:border-gray-600">
                   <button
-                    onClick={() => startEdit(r)}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs"
+                    onClick={() => handleEditClick(r)}
+                    className={`bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs ${
+                      pulsingId === r.id ? "pulse-once" : ""
+                    }`}
                   >
                     Edit
                   </button>
