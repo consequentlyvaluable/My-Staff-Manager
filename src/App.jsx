@@ -136,6 +136,8 @@ export default function App() {
   const [isClearing, setIsClearing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [deleteError, setDeleteError] = useState("");
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearError, setClearError] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -381,22 +383,44 @@ export default function App() {
     }
   };
 
-  const clearAll = async () => {
-    if (records.length === 0) return;
-    if (!confirm("Clear all bookings?")) return;
+  const clearAll = () => {
+    if (records.length === 0 || isClearing) return;
+    setClearError("");
+    setClearDialogOpen(true);
+  };
+
+  const cancelClear = () => {
+    if (isClearing) return;
+    setClearDialogOpen(false);
+    setClearError("");
+  };
+
+  const confirmClearAll = async () => {
+    if (records.length === 0) {
+      setClearDialogOpen(false);
+      setClearError("");
+      return;
+    }
+
     if (!isSupabaseConfigured) {
-      alert("Supabase is not configured. Unable to clear records.");
+      setClearError("Supabase is not configured. Unable to clear records.");
       return;
     }
 
     setIsClearing(true);
+    setClearError("");
+
+    const ids = records.map((record) => record.id);
+
     try {
-      await removeRecords(records.map((record) => record.id));
+      await removeRecords(ids);
+      setClearDialogOpen(false);
+      setClearError("");
       setRecords([]);
       cancelEdit();
     } catch (error) {
       console.error("Failed to clear records", error);
-      alert("Failed to clear records. Please try again.");
+      setClearError("Failed to clear records. Please try again.");
     } finally {
       setIsClearing(false);
     }
@@ -570,6 +594,7 @@ export default function App() {
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
         loading={isDeleting}
+        loadingLabel="Deleting..."
         error={deleteError}
       >
         {pendingDelete && (
@@ -583,6 +608,55 @@ export default function App() {
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-300">
               {formatBookingRange(pendingDelete.start, pendingDelete.end)}
             </p>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              This action cannot be undone.
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={clearDialogOpen}
+        title="Clear all bookings"
+        message={
+          records.length
+            ? `This will permanently remove ${records.length} booking${
+                records.length === 1 ? "" : "s"
+              }.`
+            : "There are no bookings to clear."
+        }
+        confirmLabel="Clear all bookings"
+        cancelLabel="Go back"
+        onCancel={cancelClear}
+        onConfirm={confirmClearAll}
+        loading={isClearing}
+        loadingLabel="Clearing..."
+        error={clearError}
+      >
+        {records.length > 0 && (
+          <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-700/60 dark:text-gray-200">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              {records.length === 1
+                ? "The following booking will be removed:"
+                : `The first ${Math.min(records.length, 3)} bookings to be removed:`}
+            </p>
+            <ul className="mt-3 space-y-2 text-xs text-gray-500 dark:text-gray-300">
+              {records.slice(0, 3).map((record) => (
+                <li key={record.id} className="rounded-lg bg-white/60 p-2 dark:bg-gray-800/50">
+                  <p className="font-medium text-gray-700 dark:text-gray-100">{record.name}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-400">
+                    {record.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-300">
+                    {formatBookingRange(record.start, record.end)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {records.length > 3 && (
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                + {records.length - 3} more booking{records.length - 3 === 1 ? "" : "s"}
+              </p>
+            )}
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
               This action cannot be undone.
             </p>
