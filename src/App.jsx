@@ -80,6 +80,22 @@ const buildUserContext = (authUser, profile) => {
   };
 };
 
+const toDateTimeLocalInput = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - timezoneOffsetMs);
+  return localDate.toISOString().slice(0, 16);
+};
+
+const toIsoStringIfPossible = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString();
+};
+
 function createEmptyForm(name = "") {
   return {
     name,
@@ -210,7 +226,7 @@ export default function App() {
   const validateRecord = () => {
     if (!form.name) return "Please select an employee.";
     if (!form.start || !form.end)
-      return "Both start and end dates are required.";
+      return "Both start and end date & time values are required.";
     const startDate = new Date(form.start);
     const endDate = new Date(form.end);
     if (isAfter(startDate, endDate))
@@ -245,26 +261,39 @@ export default function App() {
 
     setIsSaving(true);
     try {
+      const payload = {
+        name: form.name,
+        type: form.type,
+        start: toIsoStringIfPossible(form.start),
+        end: toIsoStringIfPossible(form.end),
+      };
+
       if (editingId) {
-        const updated = await updateRecord(editingId, {
-          name: form.name,
-          type: form.type,
-          start: form.start,
-          end: form.end,
-        });
+        const updated = await updateRecord(editingId, payload);
         setRecords((prev) =>
-          prev.map((rec) => (rec.id === editingId ? updated ?? rec : rec))
+          prev.map((rec) => {
+            if (rec.id !== editingId) return rec;
+            if (!updated) {
+              return { ...rec, ...payload };
+            }
+            return {
+              ...rec,
+              ...updated,
+              start: updated.start ?? payload.start,
+              end: updated.end ?? payload.end,
+            };
+          })
         );
         setEditingId(null);
       } else {
-        const created = await createRecord({
-          name: form.name,
-          type: form.type,
-          start: form.start,
-          end: form.end,
-        });
+        const created = await createRecord(payload);
         if (created) {
-          setRecords((prev) => [...prev, created]);
+          const recordWithFallback = {
+            ...created,
+            start: created.start ?? payload.start,
+            end: created.end ?? payload.end,
+          };
+          setRecords((prev) => [...prev, recordWithFallback]);
         }
       }
       setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
@@ -300,8 +329,8 @@ export default function App() {
     setForm({
       name: record.name,
       type: record.type,
-      start: record.start,
-      end: record.end,
+      start: toDateTimeLocalInput(record.start),
+      end: toDateTimeLocalInput(record.end),
     });
     setEditingId(record.id);
   };

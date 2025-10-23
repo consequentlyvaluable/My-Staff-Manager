@@ -72,26 +72,30 @@ export default function BookingForm({
         </select>
       </div>
 
-      {/* Dates */}
+      {/* Dates & Times */}
       <div className="flex gap-2">
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">
-            Start
+            Start date & time
           </label>
           <input
-            type="date"
+            type="datetime-local"
             className="w-full border p-2 rounded bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             value={form.start}
             onChange={(e) => setForm({ ...form, start: e.target.value })}
+            step="60"
           />
         </div>
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">End</label>
+          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">
+            End date & time
+          </label>
           <input
-            type="date"
+            type="datetime-local"
             className="w-full border p-2 rounded bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             value={form.end}
             onChange={(e) => setForm({ ...form, end: e.target.value })}
+            step="60"
           />
         </div>
       </div>

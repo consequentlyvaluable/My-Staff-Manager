@@ -1,6 +1,5 @@
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse as dateFnsParse, startOfWeek, getDay } from "date-fns";
-import { parseISO } from "date-fns";
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
@@ -18,6 +17,15 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const hasExplicitTime = (value) =>
+  typeof value === "string" ? value.includes("T") : Boolean(value);
+
 export default function CalendarView({
   records,
   currentDate,
@@ -26,15 +34,22 @@ export default function CalendarView({
   setCurrentView,
 }) {
   const events = records
-    .filter((r) => r.start && r.end)
-    .map((r) => ({
-      id: r.id,
-      title: `${r.name} - ${r.type} ${r.type === "Vacation" ? "🌴" : "✈️"}`,
-      start: parseISO(r.start),
-      end: parseISO(r.end),
-      allDay: false,
-      type: r.type,
-    }));
+    .map((r) => {
+      const startDate = parseDate(r.start);
+      const endDate = parseDate(r.end);
+      if (!startDate || !endDate) return null;
+      const startHasTime = hasExplicitTime(r.start);
+      const endHasTime = hasExplicitTime(r.end);
+      return {
+        id: r.id,
+        title: `${r.name} - ${r.type} ${r.type === "Vacation" ? "🌴" : "✈️"}`,
+        start: startDate,
+        end: endDate,
+        allDay: !(startHasTime || endHasTime),
+        type: r.type,
+      };
+    })
+    .filter(Boolean);
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
