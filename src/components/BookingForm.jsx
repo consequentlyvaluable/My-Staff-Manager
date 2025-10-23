@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 export default function BookingForm({
   form,
   setForm,
@@ -12,9 +14,30 @@ export default function BookingForm({
 }) {
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
+  const [showEditPulse, setShowEditPulse] = useState(false);
+
+  useEffect(() => {
+    if (!editingId) {
+      setShowEditPulse(false);
+      return;
+    }
+
+    setShowEditPulse(true);
+    const timeout = setTimeout(() => {
+      setShowEditPulse(false);
+    }, 1200);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [editingId]);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+    <div
+      className={`bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20 ${
+        editingId && showEditPulse ? "edit-booking-pulse" : ""
+      }`}
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">
           {editingId ? "Edit Booking" : "Add Booking"}
