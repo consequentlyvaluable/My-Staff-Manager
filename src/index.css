@@ -25,6 +25,42 @@ html.dark body {
   color: #f9fafb;
 }
 
+.booking-form-animate::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: inherit;
+  border: 3px solid rgba(59, 130, 246, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: booking-form-ring 0.6s ease-out;
+}
+
+.dark .booking-form-animate::after {
+  border-color: rgba(147, 197, 253, 0.75);
+}
+
+@keyframes booking-form-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-form-animate::after {
+    animation: none;
+  }
+}
+
 a {
   font-weight: 500;
   color: #4f46e5;

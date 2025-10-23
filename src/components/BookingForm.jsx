@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 export default function BookingForm({
   form,
   setForm,
@@ -13,8 +15,26 @@ export default function BookingForm({
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
 
+  const [showEditAnimation, setShowEditAnimation] = useState(false);
+
+  useEffect(() => {
+    if (!editingId) {
+      setShowEditAnimation(false);
+      return;
+    }
+
+    setShowEditAnimation(true);
+    const timeout = setTimeout(() => {
+      setShowEditAnimation(false);
+    }, 600);
+
+    return () => clearTimeout(timeout);
+  }, [editingId]);
+
+  const containerClassName = `relative bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20 ${showEditAnimation ? "booking-form-animate" : ""}`;
+
   return (
-    <div className="bg-white p-6 rounded-2xl shadow space-y-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+    <div className={containerClassName}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">
           {editingId ? "Edit Booking" : "Add Booking"}
