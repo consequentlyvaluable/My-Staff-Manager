@@ -46,7 +46,7 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl shadow-purple-200/70 transition-colors duration-300 dark:bg-gray-900 dark:shadow-black/40">
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold text-purple-800 dark:text-purple-200 whitespace-nowrap">
-              Welcome to Offyse
+              Welcome to Offyse 🏢
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Sign in with your employee account to access the dashboard.
