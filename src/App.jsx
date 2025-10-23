@@ -531,10 +531,7 @@ export default function App() {
                   handleSubmit={handleSubmit}
                   editingId={editingId}
                   cancelEdit={cancelEdit}
-                  clearAll={clearAll}
-                  records={records}
                   isSaving={isSaving}
-                  isClearing={isClearing}
                 />
                 {errorMessage && (
                   <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
@@ -554,6 +551,9 @@ export default function App() {
                     setSort={setSort}
                     startEdit={startEdit}
                     deleteRecord={deleteRecord}
+                    clearAll={clearAll}
+                    isClearing={isClearing}
+                    hasAnyRecords={records.length > 0}
                   />
                 )}
               </div>

@@ -19,6 +19,9 @@ export default function BookingTable({
   setSort,
   startEdit,
   deleteRecord,
+  clearAll,
+  isClearing = false,
+  hasAnyRecords = false,
 }) {
   const [pulsingId, setPulsingId] = useState(null);
   const pulseTimeoutRef = useRef();
@@ -57,15 +60,26 @@ export default function BookingTable({
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Schedule</h2>
-        <input
-          type="text"
-          placeholder="Search by name or type..."
-          className="border rounded px-2 py-1 text-sm w-48 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="text"
+            placeholder="Search by name or type..."
+            className="border rounded px-2 py-1 text-sm w-full sm:w-48 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {hasAnyRecords && (
+            <button
+              className="bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg shadow text-sm"
+              onClick={clearAll}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing..." : "Clear All"}
+            </button>
+          )}
+        </div>
       </div>
 
       <table className="w-full border-collapse rounded-lg overflow-hidden text-sm text-left">

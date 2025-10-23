@@ -7,10 +7,7 @@ export default function BookingForm({
   handleSubmit,
   editingId,
   cancelEdit,
-  clearAll,
-  records,
   isSaving = false,
-  isClearing = false,
 }) {
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
@@ -135,16 +132,6 @@ export default function BookingForm({
         </span>
       </button>
 
-      {/* Clear All */}
-      {records.length > 0 && (
-        <button
-          className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white py-2 rounded-lg shadow text-sm"
-          onClick={clearAll}
-          disabled={isClearing}
-        >
-          {isClearing ? "Clearing..." : "Clear All"}
-        </button>
-      )}
     </div>
   );
 }
