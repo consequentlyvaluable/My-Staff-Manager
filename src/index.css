@@ -108,3 +108,28 @@ a:hover {
 .dark .recharts-text tspan {
   fill: #e5e7eb !important;
 }
+
+.pulse-once {
+  animation: pulse-once 0.4s ease;
+}
+
+@keyframes pulse-once {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.6);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-once {
+    animation: none;
+  }
+}
