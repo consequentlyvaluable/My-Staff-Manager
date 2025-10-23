@@ -383,9 +383,9 @@ export default function App() {
 
   const clearAll = async () => {
     if (records.length === 0) return;
-    if (!confirm("Clear all bookings?")) return;
+    if (!confirm("Delete all bookings?")) return;
     if (!isSupabaseConfigured) {
-      alert("Supabase is not configured. Unable to clear records.");
+      alert("Supabase is not configured. Unable to delete bookings.");
       return;
     }
 
@@ -395,8 +395,8 @@ export default function App() {
       setRecords([]);
       cancelEdit();
     } catch (error) {
-      console.error("Failed to clear records", error);
-      alert("Failed to clear records. Please try again.");
+      console.error("Failed to delete bookings", error);
+      alert("Failed to delete bookings. Please try again.");
     } finally {
       setIsClearing(false);
     }
@@ -507,10 +507,7 @@ export default function App() {
                   handleSubmit={handleSubmit}
                   editingId={editingId}
                   cancelEdit={cancelEdit}
-                  clearAll={clearAll}
-                  records={records}
                   isSaving={isSaving}
-                  isClearing={isClearing}
                 />
                 {errorMessage && (
                   <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
@@ -530,6 +527,8 @@ export default function App() {
                     setSort={setSort}
                     startEdit={startEdit}
                     deleteRecord={deleteRecord}
+                    clearAll={clearAll}
+                    isClearing={isClearing}
                   />
                 )}
               </div>
