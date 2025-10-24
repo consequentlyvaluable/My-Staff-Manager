@@ -70,9 +70,7 @@ export default function BookingForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <label htmlFor={employeeInputId}>Employee</label>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-              Smart suggestions
-            </span>
+            
           </div>
           <div className="group relative">
             <input
