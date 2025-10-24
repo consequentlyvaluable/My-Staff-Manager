@@ -56,8 +56,12 @@ const fallbackNameFromEmail = (email) => {
     .join(" ");
 };
 
-const buildUserContext = (authUser, profile, lookupEmployeeLabel) => {
+const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => {
   if (!authUser) return null;
+  const resolveEmployeeLabel =
+    typeof lookupEmployeeLabel === "function"
+      ? lookupEmployeeLabel
+      : () => "";
   const metadata = authUser.user_metadata ?? {};
   const email = profile?.email || authUser.email || metadata.email || "";
   const rawName =
@@ -77,7 +81,7 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel) => {
   ];
   let employeeLabel = "";
   for (const source of labelSources) {
-    employeeLabel = lookupEmployeeLabel(source);
+    employeeLabel = resolveEmployeeLabel(source);
     if (employeeLabel) break;
   }
 
@@ -669,7 +673,7 @@ export default function App() {
       userId: session.user?.id,
       email: session.user?.email || email,
     });
-    const user = buildUserContext(session.user, profile);
+    const user = buildUserContext(session.user, profile, lookupEmployeeLabel);
     setCurrentUser(user);
     setCurrentPage("dashboard");
     setSidebarOpen(false);
