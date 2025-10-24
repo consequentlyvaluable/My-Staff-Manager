@@ -131,7 +131,7 @@ const parseResponse = async (response) => {
       } else if (errorBody?.error) {
         message = errorBody.error;
       }
-    } catch (error) {
+    } catch {
       const text = await response.text();
       if (text) message = text;
     }
