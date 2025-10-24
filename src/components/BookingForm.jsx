@@ -62,7 +62,7 @@ export default function BookingForm({
       </div>
 
       <p className="relative mt-3 text-sm text-slate-500 dark:text-slate-400">
-        Choose the employee, booking type, and exact time range. Changes are saved instantly once you confirm below.
+        Choose the employee, booking type, and exact time range.
       </p>
 
       <div className="relative mt-6 space-y-6">
@@ -94,7 +94,7 @@ export default function BookingForm({
             </datalist>
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            You can pick from recent names or type to add a new person.
+            You can type to search or select from the menu.
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export default function BookingForm({
         <p className="text-xs text-slate-400 dark:text-slate-500">
           {editingId
             ? "Review the details above, then update the booking."
-            : "All required fields must be completed before adding the booking."}
+            : ""}
         </p>
         <button
           className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:from-sky-600 hover:via-blue-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
