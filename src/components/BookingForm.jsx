@@ -43,7 +43,7 @@ export default function BookingForm({
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-sky-500 dark:text-sky-300">
-            {editingId ? "Currently editing" : "Create a new"}
+            {editingId ? "Currently editing" : "Create New"}
           </p>
           <h2 className="mt-1 text-2xl font-semibold text-slate-800 dark:text-slate-100">
             {editingId ? "Edit Booking" : "Add Booking"}
