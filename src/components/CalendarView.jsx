@@ -1,7 +1,12 @@
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import {
+  Calendar,
+  dateFnsLocalizer,
+} from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse as dateFnsParse, startOfWeek, getDay } from "date-fns";
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
 // Localizer setup
 const locales = {
@@ -26,12 +31,16 @@ const parseDate = (value) => {
 const hasExplicitTime = (value) =>
   typeof value === "string" ? value.includes("T") : Boolean(value);
 
+const DragAndDropCalendar = withDragAndDrop(Calendar);
+
 export default function CalendarView({
   records,
   currentDate,
   setCurrentDate,
   currentView,
   setCurrentView,
+  onEventDrop,
+  onEventResize,
 }) {
   const events = records
     .map((r) => {
@@ -56,7 +65,7 @@ export default function CalendarView({
       <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center gap-2 dark:text-gray-200">
         📅 Calendar View
       </h2>
-      <Calendar
+      <DragAndDropCalendar
         localizer={localizer}
         events={events}
         startAccessor="start"
@@ -77,6 +86,10 @@ export default function CalendarView({
             padding: "2px 4px",
           },
         })}
+        onEventDrop={onEventDrop}
+        onEventResize={onEventResize}
+        resizable
+        draggableAccessor={() => true}
       />
     </div>
   );

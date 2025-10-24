@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import BookingForm from "./components/BookingForm";
@@ -275,6 +275,121 @@ export default function App() {
   };
 
   // handlers
+  const handleCalendarUpdate = useCallback(
+    async ({ event, start, end }) => {
+      if (!event?.id) return;
+      const target = records.find((r) => r.id === event.id);
+      if (!target) return;
+
+      const nextStart = start instanceof Date ? start : new Date(start);
+      const nextEnd = end instanceof Date ? end : new Date(end);
+      if (
+        Number.isNaN(nextStart.getTime()) ||
+        Number.isNaN(nextEnd.getTime())
+      ) {
+        return;
+      }
+
+      if (isAfter(nextStart, nextEnd)) {
+        alert("End date must be on or after start date.");
+        return;
+      }
+
+      const hasConflict = records.some((record) => {
+        if (record.id === event.id) return false;
+        if (record.name !== target.name) return false;
+        const recordStart = new Date(record.start);
+        const recordEnd = new Date(record.end);
+        if (
+          Number.isNaN(recordStart.getTime()) ||
+          Number.isNaN(recordEnd.getTime())
+        ) {
+          return false;
+        }
+        return (
+          (isBefore(recordStart, nextEnd) || isEqual(recordStart, nextEnd)) &&
+          (isAfter(recordEnd, nextStart) || isEqual(recordEnd, nextStart))
+        );
+      });
+
+      if (hasConflict) {
+        alert(
+          `${target.name} already has a booking that overlaps these dates.`
+        );
+        return;
+      }
+
+      if (!isSupabaseConfigured) {
+        alert("Supabase is not configured. Unable to update booking.");
+        return;
+      }
+
+      const nextStartIso = nextStart.toISOString();
+      const nextEndIso = nextEnd.toISOString();
+
+      let previousEvent = null;
+      setRecords((prev) =>
+        prev.map((rec) => {
+          if (rec.id !== event.id) return rec;
+          previousEvent = { ...rec };
+          return {
+            ...rec,
+            start: nextStartIso,
+            end: nextEndIso,
+          };
+        })
+      );
+
+      try {
+        const updated = await updateRecord(event.id, {
+          start: nextStartIso,
+          end: nextEndIso,
+        });
+
+        if (updated) {
+          setRecords((prev) =>
+            prev.map((rec) =>
+              rec.id === event.id
+                ? {
+                    ...rec,
+                    ...updated,
+                    start: updated.start ?? nextStartIso,
+                    end: updated.end ?? nextEndIso,
+                  }
+                : rec
+            )
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to update record from calendar interaction",
+          error
+        );
+        alert("Failed to update booking. Please try again.");
+        if (previousEvent) {
+          setRecords((prev) =>
+            prev.map((rec) => (rec.id === event.id ? previousEvent : rec))
+          );
+        }
+      }
+    },
+    [records, isSupabaseConfigured]
+  );
+
+  const handleCalendarEventDrop = useCallback(
+    (args) => {
+      void handleCalendarUpdate(args);
+    },
+    [handleCalendarUpdate]
+  );
+
+  const handleCalendarEventResize = useCallback(
+    (args) => {
+      void handleCalendarUpdate(args);
+    },
+    [handleCalendarUpdate]
+  );
+
   const handleSubmit = async () => {
     const error = validateRecord();
     if (error) {
@@ -564,6 +679,8 @@ export default function App() {
                   setCurrentDate={setCurrentDate}
                   currentView={currentView}
                   setCurrentView={setCurrentView}
+                  onEventDrop={handleCalendarEventDrop}
+                  onEventResize={handleCalendarEventResize}
                 />
               </div>
             </div>
