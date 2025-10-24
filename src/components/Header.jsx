@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import TenantSelector from "./TenantSelector";
 
 export default function Header({
   onSidebarToggle,
@@ -6,6 +7,11 @@ export default function Header({
   onToggleDarkMode,
   user,
   onLogout,
+  tenantOptions = [],
+  activeTenantId = "",
+  onTenantChange = () => {},
+  loadingTenants = false,
+  tenantError = "",
 }) {
   const initials = user?.name
     ? user.name
@@ -33,7 +39,16 @@ export default function Header({
           Offyse 🏢
         </h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        {user && (
+          <TenantSelector
+            tenants={tenantOptions}
+            activeTenantId={activeTenantId}
+            onTenantChange={onTenantChange}
+            loading={loadingTenants}
+            error={tenantError}
+          />
+        )}
         <button
           type="button"
           onClick={onToggleDarkMode}

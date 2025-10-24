@@ -2,8 +2,18 @@ const DEFAULT_SUPABASE_URL = "https://qbjsccnnkwbrytywvruw.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFianNjY25ua3dicnl0eXd2cnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDI5OTMsImV4cCI6MjA3NjI3ODk5M30.J4qLO8w4kkO1V2B0PibVhWuOBROxsUzLcCUPMhvwFXU";
 
+const DEFAULT_TENANT_COLUMN = "tenant_id";
+
 const envSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 const envSupabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+
+const envEmployeesTable = (import.meta.env.VITE_SUPABASE_EMPLOYEES_TABLE || "").trim();
+const envEmployeeTenantColumn = (
+  import.meta.env.VITE_SUPABASE_EMPLOYEE_TENANT_COLUMN || ""
+).trim();
+const envTenantMembershipsTable = (
+  import.meta.env.VITE_SUPABASE_TENANT_MEMBERSHIPS_TABLE || ""
+).trim();
 
 const hasEnvSupabaseConfig = Boolean(envSupabaseUrl && envSupabaseAnonKey);
 
@@ -12,9 +22,11 @@ const supabaseAnonKey = hasEnvSupabaseConfig
   ? envSupabaseAnonKey
   : DEFAULT_SUPABASE_ANON_KEY;
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const EMPLOYEES_TABLE = envEmployeesTable || "Duferco Employees";
+const EMPLOYEE_TENANT_COLUMN = envEmployeeTenantColumn || DEFAULT_TENANT_COLUMN;
+const TENANT_MEMBERSHIPS_TABLE = envTenantMembershipsTable || "tenant_memberships";
 
-const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const baseHeaders = isSupabaseConfigured
   ? {
@@ -22,6 +34,165 @@ const baseHeaders = isSupabaseConfigured
       Authorization: `Bearer ${supabaseAnonKey}`,
     }
   : {};
+
+const buildTenantFilter = (tenantId, column = DEFAULT_TENANT_COLUMN) => {
+  const trimmedValue = cleanString(tenantId);
+  if (!trimmedValue) return "";
+  const trimmedColumn = typeof column === "string" ? column.trim() : "";
+  if (!trimmedColumn) return "";
+  return `&${trimmedColumn}=eq.${encodeURIComponent(trimmedValue)}`;
+};
+
+const cleanString = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const normalizeTenantCandidate = (candidate) => {
+  if (!candidate) return null;
+
+  if (typeof candidate === "string") {
+    const trimmed = cleanString(candidate);
+    if (!trimmed) return null;
+    return { id: trimmed, name: trimmed, slug: null };
+  }
+
+  if (typeof candidate !== "object") {
+    return null;
+  }
+
+  const idSources = [
+    candidate.tenant_id,
+    candidate.tenantId,
+    candidate.id,
+    candidate.slug,
+    candidate.identifier,
+  ];
+
+  let id = "";
+  for (const source of idSources) {
+    const trimmed = cleanString(source);
+    if (trimmed) {
+      id = trimmed;
+      break;
+    }
+  }
+
+  if (!id) return null;
+
+  const nameSources = [
+    candidate.name,
+    candidate.display_name,
+    candidate.tenant_name,
+    candidate.title,
+    candidate.label,
+    candidate.slug,
+  ];
+
+  let name = "";
+  for (const source of nameSources) {
+    const trimmed = cleanString(source);
+    if (trimmed) {
+      name = trimmed;
+      break;
+    }
+  }
+
+  if (!name) {
+    name = id;
+  }
+
+  const slug = cleanString(candidate.slug);
+
+  return {
+    id,
+    name,
+    slug: slug || null,
+  };
+};
+
+const normalizeTenantMembershipRow = (row) => {
+  if (!row) return null;
+
+  if (typeof row === "string") {
+    const trimmed = cleanString(row);
+    return trimmed ? { id: trimmed, name: trimmed, slug: null } : null;
+  }
+
+  if (typeof row !== "object") {
+    return null;
+  }
+
+  const directIdSources = [
+    row.tenant_id,
+    row.tenantId,
+    row.tenant,
+    row.organisation_id,
+    row.organization_id,
+    row.org_id,
+    row.company_id,
+  ];
+
+  for (const source of directIdSources) {
+    const trimmed = cleanString(source);
+    if (trimmed) {
+      const nameSources = [
+        row.tenant_name,
+        row.tenantName,
+        row.name,
+        row.organisation_name,
+        row.organization_name,
+        row.company_name,
+        row.label,
+      ];
+
+      let name = "";
+      for (const nameSource of nameSources) {
+        const nameCandidate = cleanString(nameSource);
+        if (nameCandidate) {
+          name = nameCandidate;
+          break;
+        }
+      }
+
+      if (!name) {
+        name = trimmed;
+      }
+
+      return {
+        id: trimmed,
+        name,
+        slug: null,
+      };
+    }
+  }
+
+  const nestedKeys = [
+    "tenant",
+    "tenants",
+    "organisation",
+    "organization",
+    "team",
+    "teams",
+    "company",
+  ];
+
+  for (const key of nestedKeys) {
+    const value = row[key];
+    if (!value) continue;
+
+    if (Array.isArray(value)) {
+      for (const candidate of value) {
+        const normalized = normalizeTenantCandidate(candidate);
+        if (normalized) return normalized;
+      }
+      continue;
+    }
+
+    const normalized = normalizeTenantCandidate(value);
+    if (normalized) return normalized;
+  }
+
+  return null;
+};
 
 const SESSION_STORAGE_KEY = "supabase.session";
 let cachedSession = null;
@@ -305,15 +476,70 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
   return null;
 };
 
-export const fetchEmployees = async () => {
+export const fetchTenantsForUser = async (userId) => {
+  if (!isSupabaseConfigured) {
+    return [];
+  }
+
+  const trimmedUserId = cleanString(userId);
+  if (!trimmedUserId) {
+    return [];
+  }
+
+  const params = new URLSearchParams();
+  params.set(
+    "select",
+    [
+      "tenant_id",
+      "tenant_name",
+      "tenants:tenant_id(id,name,slug)",
+      "tenant:tenant_id(id,name,slug)",
+    ].join(",")
+  );
+
+  const path = `${TENANT_MEMBERSHIPS_TABLE}?user_id=eq.${encodeURIComponent(
+    trimmedUserId
+  )}&${params.toString()}`;
+
+  try {
+    const data = await request(path);
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    const normalized = [];
+    for (const row of data) {
+      const candidate = normalizeTenantMembershipRow(row);
+      if (candidate?.id) {
+        normalized.push(candidate);
+      }
+    }
+
+    const deduped = [];
+    const seen = new Set();
+    for (const entry of normalized) {
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      deduped.push(entry);
+    }
+
+    return deduped;
+  } catch (error) {
+    console.warn("Failed to load tenant memberships from Supabase", error);
+    return [];
+  }
+};
+
+export const fetchEmployees = async ({ tenantId } = {}) => {
   const params = new URLSearchParams();
   params.set("select", "label,sort_order");
   params.append("order", "sort_order.asc");
   params.append("order", "label.asc");
 
-  const data = await request(
-    `${encodeURIComponent(DUFERCO_EMPLOYEES_TABLE)}?${params.toString()}`
-  );
+  let path = `${encodeURIComponent(EMPLOYEES_TABLE)}?${params.toString()}`;
+  path += buildTenantFilter(tenantId, EMPLOYEE_TENANT_COLUMN);
+
+  const data = await request(path);
 
   if (!Array.isArray(data)) {
     return [];
@@ -337,18 +563,24 @@ export const fetchEmployees = async () => {
     .filter((label) => label.length > 0);
 };
 
-export const fetchRecords = async () => {
+export const fetchRecords = async ({ tenantId } = {}) => {
   const params = new URLSearchParams({ select: "*", order: "start.asc" });
-  const data = await request(`records?${params.toString()}`);
+  const data = await request(
+    `records?${params.toString()}${buildTenantFilter(tenantId)}`
+  );
   return Array.isArray(data) ? data : [];
 };
 
-export const createRecord = async (record) => {
+export const createRecord = async (record, { tenantId } = {}) => {
   const params = new URLSearchParams({ select: "*" });
+  const payload = { ...record };
+  if (tenantId && !payload[DEFAULT_TENANT_COLUMN]) {
+    payload[DEFAULT_TENANT_COLUMN] = tenantId;
+  }
   const data = await request(`records?${params.toString()}`, {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify(record),
+    body: JSON.stringify(payload),
   });
   if (Array.isArray(data)) {
     return data[0] ?? null;

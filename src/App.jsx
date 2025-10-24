@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import BookingForm from "./components/BookingForm";
@@ -17,6 +17,7 @@ import {
   removeRecords,
   isSupabaseConfigured,
   fetchEmployees,
+  fetchTenantsForUser,
   signInEmployee,
   signOutEmployee,
   fetchEmployeeProfile,
@@ -56,6 +57,9 @@ const fallbackNameFromEmail = (email) => {
     .join(" ");
 };
 
+const toCleanString = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
 const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => {
   if (!authUser) return null;
   const resolveEmployeeLabel =
@@ -63,6 +67,7 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
       ? lookupEmployeeLabel
       : () => "";
   const metadata = authUser.user_metadata ?? {};
+  const appMetadata = authUser.app_metadata ?? {};
   const email = profile?.email || authUser.email || metadata.email || "";
   const rawName =
     (typeof profile?.display_name === "string" && profile.display_name.trim()) ||
@@ -85,11 +90,35 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
     if (employeeLabel) break;
   }
 
+  const tenantSources = [
+    profile?.tenant_id,
+    profile?.tenantId,
+    metadata.tenant_id,
+    metadata.tenantId,
+    metadata.tenant,
+    metadata.organization_id,
+    metadata.organization,
+    metadata.company_id,
+    metadata.company,
+    appMetadata.tenant_id,
+    appMetadata.tenant,
+  ];
+
+  let tenantId = "";
+  for (const source of tenantSources) {
+    const candidate = toCleanString(source);
+    if (candidate) {
+      tenantId = candidate;
+      break;
+    }
+  }
+
   return {
     id: authUser.id,
     name,
     email,
     employeeLabel,
+    tenantId,
   };
 };
 
@@ -139,6 +168,8 @@ function createEmptyForm(name = "") {
   };
 }
 
+const ACTIVE_TENANT_STORAGE_KEY = "offyse.activeTenant";
+
 
 export default function App() {
   const [records, setRecords] = useState([]);
@@ -171,6 +202,25 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [tenants, setTenants] = useState([]);
+  const [loadingTenants, setLoadingTenants] = useState(
+    () => !!isSupabaseConfigured
+  );
+  const [tenantError, setTenantError] = useState(null);
+  const [hasManualTenantSelection, setHasManualTenantSelection] =
+    useState(false);
+  const [activeTenantId, setActiveTenantId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return (
+        window.localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY) ?? ""
+      );
+    } catch (error) {
+      console.warn("Unable to read stored tenant selection", error);
+      return "";
+    }
+  });
+  const previousUserIdRef = useRef(null);
 
   const employeeLookup = useMemo(
     () => buildEmployeeLookup(employees),
@@ -187,6 +237,23 @@ export default function App() {
     [employeeLookup]
   );
 
+  const resolvedTenantId = useMemo(() => {
+    const trimmedActive = toCleanString(activeTenantId);
+    if (trimmedActive) return trimmedActive;
+
+    const userTenant = toCleanString(currentUser?.tenantId);
+    if (userTenant) return userTenant;
+
+    if (tenants.length > 0) {
+      const firstTenant = toCleanString(tenants[0]?.id);
+      if (firstTenant) return firstTenant;
+    }
+
+    return "";
+  }, [activeTenantId, currentUser, tenants]);
+
+  const headerTenantId = toCleanString(activeTenantId) || resolvedTenantId;
+
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
@@ -197,6 +264,42 @@ export default function App() {
       localStorage.setItem("theme", "light");
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    const currentId = currentUser?.id ?? null;
+    if (previousUserIdRef.current === currentId) return;
+    previousUserIdRef.current = currentId;
+    setHasManualTenantSelection(false);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const trimmed = toCleanString(activeTenantId);
+    try {
+      if (trimmed) {
+        window.localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, trimmed);
+      } else {
+        window.localStorage.removeItem(ACTIVE_TENANT_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.warn("Unable to persist tenant selection", error);
+    }
+  }, [activeTenantId]);
+
+  useEffect(() => {
+    if (!hasManualTenantSelection) return;
+    const trimmedActive = toCleanString(activeTenantId);
+    if (!trimmedActive) {
+      setHasManualTenantSelection(false);
+      return;
+    }
+    const isValidSelection = tenants.some(
+      (tenant) => toCleanString(tenant?.id) === trimmedActive
+    );
+    if (!isValidSelection) {
+      setHasManualTenantSelection(false);
+    }
+  }, [activeTenantId, tenants, hasManualTenantSelection]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -213,7 +316,7 @@ export default function App() {
     const loadEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        const data = await fetchEmployees();
+        const data = await fetchEmployees({ tenantId: resolvedTenantId });
         if (ignore) return;
         setEmployees(data);
         setEmployeesError(null);
@@ -234,7 +337,91 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [resolvedTenantId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setTenants([]);
+      setLoadingTenants(false);
+      setTenantError(null);
+      return;
+    }
+
+    const userId = currentUser?.id;
+    if (!userId) {
+      setTenants([]);
+      setLoadingTenants(false);
+      setTenantError(null);
+      return;
+    }
+
+    let ignore = false;
+    setLoadingTenants(true);
+    setTenantError(null);
+
+    const loadTenants = async () => {
+      try {
+        const data = await fetchTenantsForUser(userId);
+        if (ignore) return;
+        setTenants(data);
+        if (!data.length) {
+          setTenantError(
+            "No teams are linked to your account. Please contact an administrator."
+          );
+        } else {
+          setTenantError(null);
+        }
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to load tenant memberships", error);
+        setTenants([]);
+        setTenantError("Failed to load tenant list from Supabase.");
+      } finally {
+        if (!ignore) {
+          setLoadingTenants(false);
+        }
+      }
+    };
+
+    loadTenants();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentUser, isSupabaseConfigured]);
+
+  useEffect(() => {
+    if (hasManualTenantSelection) return;
+
+    const trimmedActive = toCleanString(activeTenantId);
+    const userTenant = toCleanString(currentUser?.tenantId);
+    const availableTenantIds = tenants
+      .map((tenant) => toCleanString(tenant?.id))
+      .filter(Boolean);
+
+    if (userTenant) {
+      if (trimmedActive !== userTenant) {
+        setActiveTenantId(userTenant);
+      } else if (
+        availableTenantIds.length > 0 &&
+        !availableTenantIds.includes(trimmedActive)
+      ) {
+        setActiveTenantId(availableTenantIds[0]);
+      }
+      return;
+    }
+
+    if (availableTenantIds.length === 0) {
+      if (trimmedActive) {
+        setActiveTenantId("");
+      }
+      return;
+    }
+
+    if (!trimmedActive || !availableTenantIds.includes(trimmedActive)) {
+      setActiveTenantId(availableTenantIds[0]);
+    }
+  }, [activeTenantId, currentUser, tenants, hasManualTenantSelection]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -310,7 +497,7 @@ export default function App() {
 
       setLoadingRecords(true);
       try {
-        const data = await fetchRecords();
+        const data = await fetchRecords({ tenantId: resolvedTenantId });
         if (!ignore) {
           setRecords(data);
           setErrorMessage(null);
@@ -333,7 +520,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [currentUser]);
+  }, [currentUser, resolvedTenantId]);
 
   useEffect(() => {
     if (editingId) return;
@@ -364,6 +551,13 @@ export default function App() {
     }
     return null;
   };
+
+  const handleTenantChange = useCallback((nextTenantId) => {
+    const trimmed = toCleanString(nextTenantId);
+    setHasManualTenantSelection(true);
+    setActiveTenantId(trimmed);
+    setTenantError(null);
+  }, []);
 
   // handlers
   const handleCalendarUpdate = useCallback(
@@ -492,6 +686,15 @@ export default function App() {
       return;
     }
 
+    const tenantIdForMutation = toCleanString(resolvedTenantId);
+    if (!tenantIdForMutation) {
+      alert(
+        tenantError ||
+          "You must select a team before creating or updating a booking."
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -519,13 +722,17 @@ export default function App() {
         );
         setEditingId(null);
       } else {
-        const created = await createRecord(payload);
+        const created = await createRecord(payload, {
+          tenantId: tenantIdForMutation,
+        });
         if (created) {
           const recordWithFallback = {
             ...created,
             start: created.start ?? payload.start,
             end: created.end ?? payload.end,
           };
+          recordWithFallback.tenant_id =
+            created.tenant_id ?? tenantIdForMutation;
           setRecords((prev) => [...prev, recordWithFallback]);
         }
       }
@@ -698,6 +905,12 @@ export default function App() {
     setEditingId(null);
     setForm(createEmptyForm());
     setRecords([]);
+    setEmployees([]);
+    setLoadingEmployees(false);
+    setEmployeesError(null);
+    setTenants([]);
+    setLoadingTenants(false);
+    setTenantError(null);
   };
 
   if (!currentUser) {
@@ -718,6 +931,11 @@ export default function App() {
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
         user={currentUser}
         onLogout={handleLogout}
+        tenantOptions={tenants}
+        activeTenantId={headerTenantId}
+        onTenantChange={handleTenantChange}
+        loadingTenants={loadingTenants}
+        tenantError={tenantError}
       />
       <div className="flex flex-1">
         <Sidebar
@@ -747,6 +965,11 @@ export default function App() {
                 {employeesError && (
                   <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
                     {employeesError}
+                  </div>
+                )}
+                {tenantError && !loadingTenants && (
+                  <div className="bg-amber-100 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm">
+                    {tenantError}
                   </div>
                 )}
                 {errorMessage && (
