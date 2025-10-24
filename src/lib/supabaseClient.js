@@ -14,7 +14,7 @@ const supabaseAnonKey = hasEnvSupabaseConfig
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
+const TENANT_EMPLOYEES_TABLE = "tenant_employees";
 
 const baseHeaders = isSupabaseConfigured
   ? {
@@ -196,6 +196,39 @@ const request = async (path, { method = "GET", body, headers = {} } = {}) => {
   return parseResponse(response);
 };
 
+const rpc = async (functionName, args = {}, { method = "POST", headers = {} } = {}) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const invoke = async (headersOverride) =>
+    fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(headersOverride ?? (await getAuthHeaders())),
+        ...headers,
+      },
+      body: JSON.stringify(args ?? {}),
+    });
+
+  let response = await invoke();
+
+  if (response.status === 401) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed?.access_token) {
+      response = await invoke({
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${refreshed.access_token}`,
+        ...headers,
+      });
+    }
+  }
+
+  return parseResponse(response);
+};
+
 export const getActiveSession = () => getStoredSession();
 
 export const restoreSession = async () => {
@@ -283,21 +316,37 @@ const fetchProfileByPath = async (path) => {
   }
 };
 
-export const fetchEmployeeProfile = async ({ userId, email }) => {
+export const fetchEmployeeProfile = async ({ userId, email, tenantId }) => {
   if (!isSupabaseConfigured) {
     return null;
   }
 
+  const filters = [];
+  if (tenantId) {
+    filters.push(`tenant_id=eq.${encodeURIComponent(tenantId)}`);
+  }
+
+  const buildPath = (baseFilter) => {
+    const params = new URLSearchParams();
+    params.set(
+      "select",
+      "user_id,tenant_id,employee_label,display_name,email"
+    );
+    const combinedFilters = [...filters, baseFilter];
+    const query = combinedFilters.join("&");
+    return `employee_profiles?${query}&${params.toString()}`;
+  };
+
   if (userId) {
     const profile = await fetchProfileByPath(
-      `employee_profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,employee_label,display_name,email`
+      buildPath(`user_id=eq.${encodeURIComponent(userId)}`)
     );
     if (profile) return profile;
   }
 
   if (email) {
     const profile = await fetchProfileByPath(
-      `employee_profiles?email=eq.${encodeURIComponent(email.toLowerCase())}&select=user_id,employee_label,display_name,email`
+      buildPath(`email=eq.${encodeURIComponent(email.toLowerCase())}`)
     );
     if (profile) return profile;
   }
@@ -305,14 +354,17 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
   return null;
 };
 
-export const fetchEmployees = async () => {
+export const fetchEmployees = async ({ tenantId } = {}) => {
+  if (!tenantId) return [];
   const params = new URLSearchParams();
   params.set("select", "label,sort_order");
   params.append("order", "sort_order.asc");
   params.append("order", "label.asc");
 
   const data = await request(
-    `${encodeURIComponent(DUFERCO_EMPLOYEES_TABLE)}?${params.toString()}`
+    `${TENANT_EMPLOYEES_TABLE}?tenant_id=eq.${encodeURIComponent(
+      tenantId
+    )}&${params.toString()}`
   );
 
   if (!Array.isArray(data)) {
@@ -337,18 +389,24 @@ export const fetchEmployees = async () => {
     .filter((label) => label.length > 0);
 };
 
-export const fetchRecords = async () => {
+export const fetchRecords = async ({ tenantId } = {}) => {
+  if (!tenantId) return [];
   const params = new URLSearchParams({ select: "*", order: "start.asc" });
-  const data = await request(`records?${params.toString()}`);
+  const data = await request(
+    `records?tenant_id=eq.${encodeURIComponent(tenantId)}&${params.toString()}`
+  );
   return Array.isArray(data) ? data : [];
 };
 
-export const createRecord = async (record) => {
+export const createRecord = async (tenantId, record) => {
+  if (!tenantId) {
+    throw new Error("A tenant is required to create a record.");
+  }
   const params = new URLSearchParams({ select: "*" });
   const data = await request(`records?${params.toString()}`, {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify(record),
+    body: JSON.stringify({ ...record, tenant_id: tenantId }),
   });
   if (Array.isArray(data)) {
     return data[0] ?? null;
@@ -356,29 +414,114 @@ export const createRecord = async (record) => {
   return data;
 };
 
-export const updateRecord = async (id, record) => {
+export const updateRecord = async (tenantId, id, record) => {
+  if (!tenantId) {
+    throw new Error("A tenant is required to update a record.");
+  }
   const params = new URLSearchParams({ select: "*" });
-  const data = await request(`records?id=eq.${id}&${params.toString()}`, {
-    method: "PATCH",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify(record),
-  });
+  const data = await request(
+    `records?tenant_id=eq.${encodeURIComponent(
+      tenantId
+    )}&id=eq.${encodeURIComponent(id)}&${params.toString()}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(record),
+    }
+  );
   if (Array.isArray(data)) {
     return data[0] ?? null;
   }
   return data;
 };
 
-export const removeRecord = async (id) => {
-  await request(`records?id=eq.${id}`, {
-    method: "DELETE",
-  });
+export const removeRecord = async (tenantId, id) => {
+  if (!tenantId) {
+    throw new Error("A tenant is required to delete a record.");
+  }
+  await request(
+    `records?tenant_id=eq.${encodeURIComponent(
+      tenantId
+    )}&id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+    }
+  );
 };
 
-export const removeRecords = async (ids) => {
-  if (!ids.length) return;
+export const removeRecords = async (tenantId, ids) => {
+  if (!tenantId || !ids.length) return;
   const quotedIds = ids.map((id) => `"${id}"`).join(",");
-  await request(`records?id=in.(${quotedIds})`, {
-    method: "DELETE",
-  });
+  await request(
+    `records?tenant_id=eq.${encodeURIComponent(
+      tenantId
+    )}&id=in.(${quotedIds})`,
+    {
+      method: "DELETE",
+    }
+  );
+};
+
+const normalizeIdentifier = (value) => value?.trim().toLowerCase() ?? "";
+
+export const fetchTenantsForIdentifier = async (identifier) => {
+  if (!isSupabaseConfigured) return [];
+  const normalized = normalizeIdentifier(identifier);
+  if (!normalized) return [];
+
+  const result = await rpc("lookup_tenants", { identifier: normalized });
+  if (!result) return [];
+  if (Array.isArray(result)) return result;
+  return [result].filter(Boolean);
+};
+
+export const fetchTenantBySlug = async (slug) => {
+  if (!isSupabaseConfigured) return null;
+  if (!slug) return null;
+  const trimmed = slug.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  const params = new URLSearchParams();
+  params.set("select", "id,slug,name,primary_domain,is_active");
+  params.append("slug", `eq.${encodeURIComponent(trimmed)}`);
+  params.append("is_active", "is.true");
+
+  const rows = await request(`tenants?${params.toString()}`);
+  if (Array.isArray(rows)) {
+    return rows.find((row) => row?.slug === trimmed) ?? rows[0] ?? null;
+  }
+  return rows ?? null;
+};
+
+export const verifyTenantMembership = async ({
+  tenantId,
+  userId,
+  identifier,
+}) => {
+  if (!isSupabaseConfigured) return false;
+  if (!tenantId) return false;
+
+  const params = new URLSearchParams();
+  params.set("select", "id");
+  params.append("tenant_id", `eq.${encodeURIComponent(tenantId)}`);
+  params.append("is_active", "is.true");
+
+  const orConditions = [];
+  if (userId) {
+    orConditions.push(`user_id.eq.${encodeURIComponent(userId)}`);
+  }
+  const normalizedIdentifier = normalizeIdentifier(identifier);
+  if (normalizedIdentifier) {
+    orConditions.push(
+      `identifier.eq.${encodeURIComponent(normalizedIdentifier)}`
+    );
+  }
+
+  let path = `tenant_memberships?${params.toString()}`;
+  if (orConditions.length) {
+    path += `&or=(${orConditions.join(",")})`;
+  }
+
+  const rows = await request(path);
+  return Array.isArray(rows) ? rows.length > 0 : Boolean(rows);
 };

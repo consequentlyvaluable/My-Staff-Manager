@@ -1,10 +1,53 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
+export default function LoginPage({
+  onLogin,
+  darkMode,
+  onToggleDarkMode,
+  tenantOptions = [],
+  selectedTenant,
+  onSelectTenant,
+  onLookupTenants,
+  tenantLookupLoading = false,
+  tenantLookupError = "",
+  tenantDetectionError = "",
+  isTenantSelectionLocked = false,
+  enforcedTenantSlug,
+  enforcedTenantName,
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof onLookupTenants !== "function") return;
+    const trimmed = email.trim();
+    if (trimmed.length < 3) {
+      onLookupTenants("");
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      onLookupTenants(trimmed);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      onLookupTenants(trimmed);
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [email, onLookupTenants]);
+
+  const combinedTenantError = useMemo(() => {
+    if (tenantLookupError && tenantDetectionError) {
+      return `${tenantDetectionError} ${tenantLookupError}`;
+    }
+    return tenantDetectionError || tenantLookupError || "";
+  }, [tenantDetectionError, tenantLookupError]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -15,9 +58,14 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
       return;
     }
 
+    if (!selectedTenant?.id) {
+      setError("Please choose a company to sign in.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await onLogin({ email, password });
+      await onLogin({ email, password, tenant: selectedTenant });
     } catch (authError) {
       setError(authError.message || "Unable to sign in. Please try again.");
     } finally {
@@ -70,6 +118,62 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="Enter your User ID"
               />
+            </div>
+            <div>
+              <label
+                htmlFor="tenant"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
+                Company
+              </label>
+              <select
+                id="tenant"
+                name="tenant"
+                value={selectedTenant?.id ?? ""}
+                onChange={(event) => {
+                  const nextId = event.target.value;
+                  if (typeof onSelectTenant === "function") {
+                    const nextTenant = tenantOptions.find(
+                      (tenant) => tenant.id === nextId
+                    );
+                    onSelectTenant(nextTenant ?? null);
+                  }
+                }}
+                disabled={
+                  submitting ||
+                  isTenantSelectionLocked ||
+                  tenantOptions.length === 0
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="" disabled>
+                  {tenantOptions.length
+                    ? "Select the company you want to access"
+                    : "No companies available"}
+                </option>
+                {tenantOptions.map((tenant) => (
+                  <option key={tenant.id} value={tenant.id}>
+                    {tenant.name || tenant.slug}
+                  </option>
+                ))}
+              </select>
+              {isTenantSelectionLocked && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {`This subdomain is locked to ${
+                    enforcedTenantName || enforcedTenantSlug || "this company"
+                  }.`}
+                </p>
+              )}
+              {tenantLookupLoading && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Looking up companies for this account...
+                </p>
+              )}
+              {combinedTenantError && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:bg-amber-500/20 dark:text-amber-200">
+                  {combinedTenantError}
+                </p>
+              )}
             </div>
             <div>
               <label
