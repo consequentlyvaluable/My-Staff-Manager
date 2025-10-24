@@ -686,14 +686,49 @@ export default function App() {
             </div>
           )}
           {currentPage === "employees" && (
-            <EmployeeList
-              employees={employees}
-              records={records}
-              search={search}
-              setSearch={setSearch}
-              startEdit={startEdit}
-              deleteRecord={deleteRecord}
-            />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+              <div className="order-2 xl:order-1">
+                <EmployeeList
+                  employees={employees}
+                  records={records}
+                  search={search}
+                  setSearch={setSearch}
+                  startEdit={startEdit}
+                  deleteRecord={deleteRecord}
+                  editingId={editingId}
+                />
+              </div>
+              <div className="order-1 space-y-6 xl:order-2">
+                {editingId ? (
+                  <BookingForm
+                    form={form}
+                    setForm={setForm}
+                    employees={employees}
+                    handleSubmit={handleSubmit}
+                    editingId={editingId}
+                    cancelEdit={cancelEdit}
+                    isSaving={isSaving}
+                  />
+                ) : (
+                  <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-3xl border border-slate-200/60 bg-white/80 p-8 text-center text-slate-500 shadow-lg shadow-slate-900/5 transition-colors dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-slate-300 dark:shadow-black/30">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
+                      ✏️
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-100">
+                      Select a booking to edit
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed">
+                      Choose a booking from the list to review and update it without leaving the Employees tab.
+                    </p>
+                  </div>
+                )}
+                {errorMessage && (
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-200">
+                    {errorMessage}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
           {currentPage === "reports" && <Reports records={records} />}
         </main>

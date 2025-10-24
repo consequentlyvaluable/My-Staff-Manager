@@ -17,6 +17,7 @@ export default function EmployeeList({
   setSearch,
   startEdit,
   deleteRecord,
+  editingId,
 }) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
@@ -53,31 +54,45 @@ export default function EmployeeList({
                 {/* Show bookings if any */}
                 {empBookings.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-                    {empBookings.map((b) => (
-                      <li
-                        key={b.id}
-                        className="flex items-center justify-between border-b last:border-0 py-1 border-gray-200 dark:border-gray-600"
-                      >
-                        <span>
-                          {b.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}{" "}
-                          ({formatSummaryDate(b.start)} - {formatSummaryDate(b.end)})
-                        </span>
-                        <div className="space-x-2">
-                          <button
-                            onClick={() => startEdit(b)}
-                            className="text-xs bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteRecord(b.id)}
-                            className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </li>
-                    ))}
+                    {empBookings.map((b) => {
+                      const isEditing = editingId === b.id;
+                      return (
+                        <li
+                          key={b.id}
+                          className={`flex items-center justify-between border-b last:border-0 py-1 transition-colors ${
+                            isEditing
+                              ? "border-yellow-300 bg-yellow-50/70 text-yellow-800 dark:border-yellow-500/60 dark:bg-yellow-500/10 dark:text-yellow-200"
+                              : "border-gray-200 text-gray-700 dark:border-gray-600 dark:text-gray-200"
+                          }`}
+                        >
+                          <span className="flex flex-col text-sm">
+                            <span>
+                              {b.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}{" "}
+                              ({formatSummaryDate(b.start)} - {formatSummaryDate(b.end)})
+                            </span>
+                            {isEditing && (
+                              <span className="text-xs font-semibold uppercase tracking-wide text-yellow-600 dark:text-yellow-300">
+                                Editing now
+                              </span>
+                            )}
+                          </span>
+                          <div className="space-x-2">
+                            <button
+                              onClick={() => startEdit(b)}
+                              className="text-xs bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteRecord(b.id)}
+                              className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </li>
