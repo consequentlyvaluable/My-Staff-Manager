@@ -14,6 +14,8 @@ const supabaseAnonKey = hasEnvSupabaseConfig
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
+
 const baseHeaders = isSupabaseConfigured
   ? {
       apikey: supabaseAnonKey,
@@ -301,6 +303,38 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
   }
 
   return null;
+};
+
+export const fetchEmployees = async () => {
+  const params = new URLSearchParams();
+  params.set("select", "label,sort_order");
+  params.append("order", "sort_order.asc");
+  params.append("order", "label.asc");
+
+  const data = await request(
+    `${encodeURIComponent(DUFERCO_EMPLOYEES_TABLE)}?${params.toString()}`
+  );
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  const normalizeOrder = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : Number.POSITIVE_INFINITY;
+  };
+
+  const sorted = [...data].sort((a, b) => {
+    const orderDelta = normalizeOrder(a?.sort_order) - normalizeOrder(b?.sort_order);
+    if (orderDelta !== 0) return orderDelta;
+    const aLabel = typeof a?.label === "string" ? a.label : "";
+    const bLabel = typeof b?.label === "string" ? b.label : "";
+    return aLabel.localeCompare(bLabel);
+  });
+
+  return sorted
+    .map((row) => (typeof row?.label === "string" ? row.label.trim() : ""))
+    .filter((label) => label.length > 0);
 };
 
 export const fetchRecords = async () => {

@@ -17,6 +17,7 @@ export default function EmployeeList({
   setSearch,
   startEdit,
   deleteRecord,
+  loading = false,
 }) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
@@ -32,6 +33,11 @@ export default function EmployeeList({
       />
 
       <ul className="space-y-4">
+        {employees.length === 0 && !loading && (
+          <li className="rounded-lg border border-dashed border-gray-300 bg-white/60 p-4 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
+            No employees available.
+          </li>
+        )}
         {employees
           .filter((emp) => emp.toLowerCase().includes(search.toLowerCase()))
           .map((emp) => {

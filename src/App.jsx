@@ -7,7 +7,6 @@ import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import ConfirmDialog from "./components/ConfirmDialog";
-import { employees } from "./data/employees";
 import LoginPage from "./components/LoginPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
@@ -17,6 +16,7 @@ import {
   removeRecord,
   removeRecords,
   isSupabaseConfigured,
+  fetchEmployees,
   signInEmployee,
   signOutEmployee,
   fetchEmployeeProfile,
@@ -26,13 +26,21 @@ import {
 const stripEmployeeLabel = (label) =>
   typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
 
-const employeeLabelLookup = new Map(
-  employees.map((entry) => [stripEmployeeLabel(entry).toLowerCase(), entry])
-);
-
-const lookupEmployeeLabel = (value) => {
-  if (!value) return "";
-  return employeeLabelLookup.get(stripEmployeeLabel(value).toLowerCase()) ?? "";
+const buildEmployeeLookup = (list) => {
+  const lookup = new Map();
+  for (const entry of list) {
+    const label =
+      typeof entry === "string"
+        ? entry.trim()
+        : typeof entry?.label === "string"
+        ? entry.label.trim()
+        : "";
+    if (!label) continue;
+    const key = stripEmployeeLabel(label).toLowerCase();
+    if (!key) continue;
+    lookup.set(key, label);
+  }
+  return lookup;
 };
 
 const fallbackNameFromEmail = (email) => {
@@ -48,7 +56,7 @@ const fallbackNameFromEmail = (email) => {
     .join(" ");
 };
 
-const buildUserContext = (authUser, profile) => {
+const buildUserContext = (authUser, profile, lookupEmployeeLabel) => {
   if (!authUser) return null;
   const metadata = authUser.user_metadata ?? {};
   const email = profile?.email || authUser.email || metadata.email || "";
@@ -131,6 +139,11 @@ function createEmptyForm(name = "") {
 export default function App() {
   const [records, setRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(
+    () => !!isSupabaseConfigured
+  );
+  const [employeesError, setEmployeesError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -155,6 +168,21 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
 
+  const employeeLookup = useMemo(
+    () => buildEmployeeLookup(employees),
+    [employees]
+  );
+
+  const lookupEmployeeLabel = useCallback(
+    (value) => {
+      if (!value) return "";
+      return (
+        employeeLookup.get(stripEmployeeLabel(value).toLowerCase()) ?? ""
+      );
+    },
+    [employeeLookup]
+  );
+
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
@@ -165,6 +193,44 @@ export default function App() {
       localStorage.setItem("theme", "light");
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setEmployees([]);
+      setLoadingEmployees(false);
+      setEmployeesError(
+        "Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+      );
+      return;
+    }
+
+    let ignore = false;
+
+    const loadEmployees = async () => {
+      setLoadingEmployees(true);
+      try {
+        const data = await fetchEmployees();
+        if (ignore) return;
+        setEmployees(data);
+        setEmployeesError(null);
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to load employees", error);
+        setEmployees([]);
+        setEmployeesError("Failed to load employees from Supabase.");
+      } finally {
+        if (!ignore) {
+          setLoadingEmployees(false);
+        }
+      }
+    };
+
+    loadEmployees();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -180,7 +246,11 @@ export default function App() {
           email: session.user.email,
         });
         if (ignore) return;
-        const userContext = buildUserContext(session.user, profile);
+        const userContext = buildUserContext(
+          session.user,
+          profile,
+          lookupEmployeeLabel
+        );
         setCurrentUser(userContext);
         setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
       } catch (error) {
@@ -193,7 +263,24 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [lookupEmployeeLabel]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.employeeLabel) return;
+    const derivedLabel = lookupEmployeeLabel(
+      currentUser.employeeLabel || currentUser.name
+    );
+    if (!derivedLabel) return;
+    setCurrentUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            employeeLabel: derivedLabel,
+          }
+        : prev
+    );
+  }, [currentUser, lookupEmployeeLabel]);
 
   // Supabase sync
   useEffect(() => {
@@ -648,6 +735,16 @@ export default function App() {
                   cancelEdit={cancelEdit}
                   isSaving={isSaving}
                 />
+                {loadingEmployees && (
+                  <div className="bg-white p-6 rounded-2xl shadow text-center text-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                    Loading employees...
+                  </div>
+                )}
+                {employeesError && (
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
+                    {employeesError}
+                  </div>
+                )}
                 {errorMessage && (
                   <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
                     {errorMessage}
@@ -686,14 +783,27 @@ export default function App() {
             </div>
           )}
           {currentPage === "employees" && (
-            <EmployeeList
-              employees={employees}
-              records={records}
-              search={search}
-              setSearch={setSearch}
-              startEdit={startEdit}
-              deleteRecord={deleteRecord}
-            />
+            <div className="space-y-4">
+              {loadingEmployees && (
+                <div className="bg-white p-6 rounded-2xl shadow text-center text-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                  Loading employees...
+                </div>
+              )}
+              {employeesError && (
+                <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm">
+                  {employeesError}
+                </div>
+              )}
+              <EmployeeList
+                employees={employees}
+                records={records}
+                search={search}
+                setSearch={setSearch}
+                startEdit={startEdit}
+                deleteRecord={deleteRecord}
+                loading={loadingEmployees}
+              />
+            </div>
           )}
           {currentPage === "reports" && <Reports records={records} />}
         </main>
