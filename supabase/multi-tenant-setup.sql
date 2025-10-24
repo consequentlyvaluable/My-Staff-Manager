@@ -153,11 +153,13 @@ ALTER TABLE public.tenant_employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employee_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants are public" ON public.tenants;
 CREATE POLICY "Tenants are public" ON public.tenants
   FOR SELECT
   TO anon, authenticated
   USING (is_active);
 
+DROP POLICY IF EXISTS "Memberships self access" ON public.tenant_memberships;
 CREATE POLICY "Memberships self access" ON public.tenant_memberships
   FOR SELECT
   TO authenticated
@@ -168,16 +170,19 @@ CREATE POLICY "Memberships self access" ON public.tenant_memberships
     )
   );
 
+DROP POLICY IF EXISTS "Tenant employees visible" ON public.tenant_employees;
 CREATE POLICY "Tenant employees visible" ON public.tenant_employees
   FOR SELECT
   TO authenticated
   USING (public.is_tenant_member(tenant_id));
 
+DROP POLICY IF EXISTS "Employee profiles readable" ON public.employee_profiles;
 CREATE POLICY "Employee profiles readable" ON public.employee_profiles
   FOR SELECT
   TO authenticated
   USING (public.is_tenant_member(tenant_id));
 
+DROP POLICY IF EXISTS "Employee profiles manage self" ON public.employee_profiles;
 CREATE POLICY "Employee profiles manage self" ON public.employee_profiles
   FOR UPDATE USING (
     public.is_tenant_member(tenant_id) AND user_id = auth.uid()
@@ -186,22 +191,26 @@ CREATE POLICY "Employee profiles manage self" ON public.employee_profiles
     public.is_tenant_member(tenant_id) AND user_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "Tenant records select" ON public.records;
 CREATE POLICY "Tenant records select" ON public.records
   FOR SELECT
   TO authenticated
   USING (public.is_tenant_member(tenant_id));
 
+DROP POLICY IF EXISTS "Tenant records insert" ON public.records;
 CREATE POLICY "Tenant records insert" ON public.records
   FOR INSERT
   TO authenticated
   WITH CHECK (public.is_tenant_member(tenant_id));
 
+DROP POLICY IF EXISTS "Tenant records update" ON public.records;
 CREATE POLICY "Tenant records update" ON public.records
   FOR UPDATE
   TO authenticated
   USING (public.is_tenant_member(tenant_id))
   WITH CHECK (public.is_tenant_member(tenant_id));
 
+DROP POLICY IF EXISTS "Tenant records delete" ON public.records;
 CREATE POLICY "Tenant records delete" ON public.records
   FOR DELETE
   TO authenticated

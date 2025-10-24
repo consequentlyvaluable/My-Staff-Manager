@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import BookingForm from "./components/BookingForm";
@@ -189,6 +189,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const tenantLookupRequestIdRef = useRef(0);
+  const lastLookupIdentifierRef = useRef("");
 
   const employeeLookup = useMemo(
     () => buildEmployeeLookup(employees),
@@ -310,32 +312,41 @@ export default function App() {
 
   const lookupTenantsForIdentifier = useCallback(
     async (identifier) => {
+      const normalized = identifier?.trim().toLowerCase() ?? "";
+      const requestId = tenantLookupRequestIdRef.current + 1;
+      tenantLookupRequestIdRef.current = requestId;
+
       if (!isSupabaseConfigured) {
-        setTenantLookupError(
-          "Supabase is not configured. Please contact your administrator."
-        );
-        if (enforcedTenant) {
-          setTenantLookupOptions([enforcedTenant]);
-          setSelectedTenantForLogin(enforcedTenant);
-        } else {
-          setTenantLookupOptions([]);
-          setSelectedTenantForLogin(null);
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupError(
+            "Supabase is not configured. Please contact your administrator."
+          );
+          setTenantLookupLoading(false);
+          if (enforcedTenant) {
+            setTenantLookupOptions([enforcedTenant]);
+            setSelectedTenantForLogin(enforcedTenant);
+          } else {
+            setTenantLookupOptions([]);
+            setSelectedTenantForLogin(null);
+          }
+          lastLookupIdentifierRef.current = normalized;
         }
-        setTenantLookupLoading(false);
         return;
       }
 
-      const trimmed = identifier?.trim();
-      if (!trimmed) {
-        if (enforcedTenant) {
-          setTenantLookupOptions([enforcedTenant]);
-          setSelectedTenantForLogin(enforcedTenant);
-        } else {
-          setTenantLookupOptions([]);
-          setSelectedTenantForLogin(null);
+      if (!normalized) {
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupError("");
+          setTenantLookupLoading(false);
+          if (enforcedTenant) {
+            setTenantLookupOptions([enforcedTenant]);
+            setSelectedTenantForLogin(enforcedTenant);
+          } else {
+            setTenantLookupOptions([]);
+            setSelectedTenantForLogin(null);
+          }
+          lastLookupIdentifierRef.current = normalized;
         }
-        setTenantLookupError("");
-        setTenantLookupLoading(false);
         return;
       }
 
@@ -343,7 +354,9 @@ export default function App() {
       setTenantLookupError("");
 
       try {
-        const tenants = await fetchTenantsForIdentifier(trimmed);
+        const tenants = await fetchTenantsForIdentifier(normalized);
+        if (tenantLookupRequestIdRef.current !== requestId) return;
+
         let options = tenants;
         if (enforcedTenant) {
           options = tenants.filter((tenant) => tenant.id === enforcedTenant.id);
@@ -353,6 +366,7 @@ export default function App() {
             setTenantLookupError(
               "This account is not linked to the company for this subdomain."
             );
+            lastLookupIdentifierRef.current = normalized;
             return;
           }
         }
@@ -375,15 +389,20 @@ export default function App() {
         } else {
           setTenantLookupError("");
         }
+        lastLookupIdentifierRef.current = normalized;
       } catch (error) {
+        if (tenantLookupRequestIdRef.current !== requestId) return;
         console.error("Failed to lookup tenants", error);
         setTenantLookupOptions(enforcedTenant ? [enforcedTenant] : []);
         setSelectedTenantForLogin(enforcedTenant ?? null);
         setTenantLookupError(
           error?.message || "Unable to look up companies for this account."
         );
+        lastLookupIdentifierRef.current = normalized;
       } finally {
-        setTenantLookupLoading(false);
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupLoading(false);
+        }
       }
     },
     [enforcedTenant, isSupabaseConfigured]
