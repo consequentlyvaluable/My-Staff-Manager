@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import BookingForm from "./components/BookingForm";
@@ -21,7 +21,16 @@ import {
   signOutEmployee,
   fetchEmployeeProfile,
   restoreSession,
+  fetchTenantsForIdentifier,
+  fetchTenantBySlug,
+  verifyTenantMembership,
 } from "./lib/supabaseClient";
+import {
+  detectTenantSlugFromLocation,
+  loadStoredTenant,
+  storeActiveTenant,
+  clearStoredTenant,
+} from "./lib/tenant";
 
 const stripEmployeeLabel = (label) =>
   typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
@@ -163,6 +172,15 @@ export default function App() {
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentTenant, setCurrentTenant] = useState(null);
+  const [enforcedTenant, setEnforcedTenant] = useState(null);
+  const [enforcedTenantSlug, setEnforcedTenantSlug] = useState(null);
+  const [tenantLookupOptions, setTenantLookupOptions] = useState([]);
+  const [tenantLookupLoading, setTenantLookupLoading] = useState(false);
+  const [tenantLookupError, setTenantLookupError] = useState("");
+  const [selectedTenantForLogin, setSelectedTenantForLogin] = useState(null);
+  const [tenantDetectionError, setTenantDetectionError] = useState("");
+  const [tenantDetectionResolved, setTenantDetectionResolved] = useState(false);
   const [form, setForm] = useState(() => createEmptyForm());
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -171,6 +189,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const tenantLookupRequestIdRef = useRef(0);
+  const lastLookupIdentifierRef = useRef("");
 
   const employeeLookup = useMemo(
     () => buildEmployeeLookup(employees),
@@ -200,6 +220,196 @@ export default function App() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
+      setTenantDetectionResolved(true);
+      return;
+    }
+
+    const slug = detectTenantSlugFromLocation();
+    setEnforcedTenantSlug(slug);
+    if (!slug) {
+      setTenantDetectionResolved(true);
+      return;
+    }
+
+    let ignore = false;
+
+    const resolveTenant = async () => {
+      try {
+        const tenant = await fetchTenantBySlug(slug);
+        if (ignore) return;
+
+        if (!tenant) {
+          setTenantDetectionError(
+            "The company associated with this subdomain is inactive or missing."
+          );
+          setEnforcedTenant(null);
+          setTenantLookupOptions([]);
+          setSelectedTenantForLogin(null);
+        } else {
+          setEnforcedTenant(tenant);
+          setTenantDetectionError("");
+          setTenantLookupOptions([tenant]);
+          setSelectedTenantForLogin(tenant);
+        }
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to resolve tenant for subdomain", error);
+        setTenantDetectionError(
+          "Unable to resolve the company for this subdomain. Please try again later."
+        );
+        setEnforcedTenant(null);
+      } finally {
+        if (!ignore) {
+          setTenantDetectionResolved(true);
+        }
+      }
+    };
+
+    resolveTenant();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isSupabaseConfigured]);
+
+  useEffect(() => {
+    if (!tenantDetectionResolved) return;
+    if (!isSupabaseConfigured) return;
+    if (enforcedTenant) return;
+
+    const stored = loadStoredTenant();
+    if (!stored?.slug) return;
+
+    let ignore = false;
+
+    const hydrateStoredTenant = async () => {
+      try {
+        const tenant = await fetchTenantBySlug(stored.slug);
+        if (ignore) return;
+        if (!tenant) {
+          clearStoredTenant();
+          return;
+        }
+        setSelectedTenantForLogin((prev) => {
+          if (prev?.id === tenant.id) return prev;
+          return tenant;
+        });
+        setTenantLookupOptions((prev) => {
+          if (prev.some((option) => option.id === tenant.id)) return prev;
+          return [...prev, tenant];
+        });
+      } catch (error) {
+        console.warn("Unable to restore tenant from storage", error);
+      }
+    };
+
+    hydrateStoredTenant();
+
+    return () => {
+      ignore = true;
+    };
+  }, [tenantDetectionResolved, enforcedTenant, isSupabaseConfigured]);
+
+  const lookupTenantsForIdentifier = useCallback(
+    async (identifier) => {
+      const normalized = identifier?.trim().toLowerCase() ?? "";
+      const requestId = tenantLookupRequestIdRef.current + 1;
+      tenantLookupRequestIdRef.current = requestId;
+
+      if (!isSupabaseConfigured) {
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupError(
+            "Supabase is not configured. Please contact your administrator."
+          );
+          setTenantLookupLoading(false);
+          if (enforcedTenant) {
+            setTenantLookupOptions([enforcedTenant]);
+            setSelectedTenantForLogin(enforcedTenant);
+          } else {
+            setTenantLookupOptions([]);
+            setSelectedTenantForLogin(null);
+          }
+          lastLookupIdentifierRef.current = normalized;
+        }
+        return;
+      }
+
+      if (!normalized) {
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupError("");
+          setTenantLookupLoading(false);
+          if (enforcedTenant) {
+            setTenantLookupOptions([enforcedTenant]);
+            setSelectedTenantForLogin(enforcedTenant);
+          } else {
+            setTenantLookupOptions([]);
+            setSelectedTenantForLogin(null);
+          }
+          lastLookupIdentifierRef.current = normalized;
+        }
+        return;
+      }
+
+      setTenantLookupLoading(true);
+      setTenantLookupError("");
+
+      try {
+        const tenants = await fetchTenantsForIdentifier(normalized);
+        if (tenantLookupRequestIdRef.current !== requestId) return;
+
+        let options = tenants;
+        if (enforcedTenant) {
+          options = tenants.filter((tenant) => tenant.id === enforcedTenant.id);
+          if (!options.length) {
+            setTenantLookupOptions([]);
+            setSelectedTenantForLogin(null);
+            setTenantLookupError(
+              "This account is not linked to the company for this subdomain."
+            );
+            lastLookupIdentifierRef.current = normalized;
+            return;
+          }
+        }
+
+        setTenantLookupOptions(options);
+        setSelectedTenantForLogin((prev) => {
+          if (prev && options.some((option) => option.id === prev.id)) {
+            return (
+              options.find((option) => option.id === prev.id) ??
+              options[0] ??
+              null
+            );
+          }
+          if (options.length > 0) return options[0];
+          if (enforcedTenant) return enforcedTenant;
+          return null;
+        });
+        if (!options.length) {
+          setTenantLookupError("No active companies found for this account.");
+        } else {
+          setTenantLookupError("");
+        }
+        lastLookupIdentifierRef.current = normalized;
+      } catch (error) {
+        if (tenantLookupRequestIdRef.current !== requestId) return;
+        console.error("Failed to lookup tenants", error);
+        setTenantLookupOptions(enforcedTenant ? [enforcedTenant] : []);
+        setSelectedTenantForLogin(enforcedTenant ?? null);
+        setTenantLookupError(
+          error?.message || "Unable to look up companies for this account."
+        );
+        lastLookupIdentifierRef.current = normalized;
+      } finally {
+        if (tenantLookupRequestIdRef.current === requestId) {
+          setTenantLookupLoading(false);
+        }
+      }
+    },
+    [enforcedTenant, isSupabaseConfigured]
+  );
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
       setEmployees([]);
       setLoadingEmployees(false);
       setEmployeesError(
@@ -208,12 +418,19 @@ export default function App() {
       return;
     }
 
+    if (!currentTenant) {
+      setEmployees([]);
+      setEmployeesError(null);
+      setLoadingEmployees(false);
+      return;
+    }
+
     let ignore = false;
 
     const loadEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        const data = await fetchEmployees();
+        const data = await fetchEmployees({ tenantId: currentTenant.id });
         if (ignore) return;
         setEmployees(data);
         setEmployeesError(null);
@@ -234,10 +451,11 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [currentTenant, isSupabaseConfigured]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
+    if (!tenantDetectionResolved) return;
 
     let ignore = false;
 
@@ -245,11 +463,84 @@ export default function App() {
       try {
         const session = await restoreSession();
         if (!session?.user) return;
+
+        let tenantCandidate = null;
+
+        if (enforcedTenant) {
+          const allowed = await verifyTenantMembership({
+            tenantId: enforcedTenant.id,
+            userId: session.user.id,
+            identifier: session.user.email,
+          });
+          if (!allowed) {
+            await signOutEmployee();
+            clearStoredTenant();
+            setCurrentTenant(enforcedTenant);
+            setSelectedTenantForLogin(enforcedTenant);
+            setTenantLookupOptions([enforcedTenant]);
+            return;
+          }
+          tenantCandidate = enforcedTenant;
+        } else {
+          const storedTenant = loadStoredTenant();
+          if (storedTenant?.slug) {
+            const tenant = await fetchTenantBySlug(storedTenant.slug);
+            if (tenant) {
+              const allowed = await verifyTenantMembership({
+                tenantId: tenant.id,
+                userId: session.user.id,
+                identifier: session.user.email,
+              });
+              if (allowed) {
+                tenantCandidate = tenant;
+              } else {
+                clearStoredTenant();
+              }
+            } else {
+              clearStoredTenant();
+            }
+          }
+
+          if (!tenantCandidate) {
+            const availableTenants = await fetchTenantsForIdentifier(
+              session.user.email || ""
+            );
+            tenantCandidate = availableTenants[0] ?? null;
+          }
+        }
+
+        if (!tenantCandidate) {
+          await signOutEmployee();
+          clearStoredTenant();
+          if (enforcedTenant) {
+            setCurrentTenant(enforcedTenant);
+            setSelectedTenantForLogin(enforcedTenant);
+            setTenantLookupOptions([enforcedTenant]);
+          } else {
+            setCurrentTenant(null);
+            setSelectedTenantForLogin(null);
+            setTenantLookupOptions([]);
+          }
+          return;
+        }
+
         const profile = await fetchEmployeeProfile({
           userId: session.user.id,
           email: session.user.email,
+          tenantId: tenantCandidate.id,
         });
+
         if (ignore) return;
+
+        setCurrentTenant(tenantCandidate);
+        setSelectedTenantForLogin(tenantCandidate);
+        setTenantLookupOptions((prev) => {
+          if (prev.some((option) => option.id === tenantCandidate.id)) return prev;
+          return [...prev, tenantCandidate];
+        });
+        setTenantLookupError("");
+        storeActiveTenant(tenantCandidate);
+
         const userContext = buildUserContext(
           session.user,
           profile,
@@ -267,7 +558,20 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [lookupEmployeeLabel]);
+  }, [
+    enforcedTenant,
+    isSupabaseConfigured,
+    lookupEmployeeLabel,
+    tenantDetectionResolved,
+    fetchEmployeeProfile,
+    fetchTenantBySlug,
+    fetchTenantsForIdentifier,
+    verifyTenantMembership,
+    signOutEmployee,
+    clearStoredTenant,
+    loadStoredTenant,
+    storeActiveTenant,
+  ]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -290,7 +594,7 @@ export default function App() {
   useEffect(() => {
     let ignore = false;
 
-    if (!currentUser) {
+    if (!currentUser || !currentTenant) {
       setRecords([]);
       setLoadingRecords(false);
       setErrorMessage(null);
@@ -299,18 +603,20 @@ export default function App() {
       };
     }
 
-    const loadRecords = async () => {
-      if (!isSupabaseConfigured) {
-        setErrorMessage(
-          "Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
-        );
-        setLoadingRecords(false);
-        return;
-      }
+    if (!isSupabaseConfigured) {
+      setErrorMessage(
+        "Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+      );
+      setLoadingRecords(false);
+      return () => {
+        ignore = true;
+      };
+    }
 
+    const loadRecords = async () => {
       setLoadingRecords(true);
       try {
-        const data = await fetchRecords();
+        const data = await fetchRecords({ tenantId: currentTenant.id });
         if (!ignore) {
           setRecords(data);
           setErrorMessage(null);
@@ -333,7 +639,7 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [currentUser]);
+  }, [currentUser, currentTenant, isSupabaseConfigured]);
 
   useEffect(() => {
     if (editingId) return;
@@ -415,6 +721,11 @@ export default function App() {
         return;
       }
 
+      if (!currentTenant) {
+        alert("Select a company before managing bookings.");
+        return;
+      }
+
       const nextStartIso = nextStart.toISOString();
       const nextEndIso = nextEnd.toISOString();
 
@@ -432,7 +743,7 @@ export default function App() {
       );
 
       try {
-        const updated = await updateRecord(event.id, {
+        const updated = await updateRecord(currentTenant.id, event.id, {
           start: nextStartIso,
           end: nextEndIso,
         });
@@ -464,7 +775,7 @@ export default function App() {
         }
       }
     },
-    [records, isSupabaseConfigured]
+    [records, isSupabaseConfigured, currentTenant]
   );
 
   const handleCalendarEventDrop = useCallback(
@@ -491,6 +802,10 @@ export default function App() {
       alert("Supabase is not configured. Unable to save record.");
       return;
     }
+    if (!currentTenant) {
+      alert("Select a company before managing bookings.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -502,7 +817,7 @@ export default function App() {
       };
 
       if (editingId) {
-        const updated = await updateRecord(editingId, payload);
+        const updated = await updateRecord(currentTenant.id, editingId, payload);
         setRecords((prev) =>
           prev.map((rec) => {
             if (rec.id !== editingId) return rec;
@@ -519,7 +834,7 @@ export default function App() {
         );
         setEditingId(null);
       } else {
-        const created = await createRecord(payload);
+        const created = await createRecord(currentTenant.id, payload);
         if (created) {
           const recordWithFallback = {
             ...created,
@@ -572,12 +887,16 @@ export default function App() {
       setDeleteError("Supabase is not configured. Unable to delete record.");
       return;
     }
+    if (!currentTenant) {
+      setDeleteError("Select a company before managing bookings.");
+      return;
+    }
 
     setIsDeleting(true);
     setDeleteError("");
 
     try {
-      await removeRecord(pendingDelete.id);
+      await removeRecord(currentTenant.id, pendingDelete.id);
       setRecords((prev) => prev.filter((r) => r.id !== pendingDelete.id));
       if (editingId === pendingDelete.id) cancelEdit();
       setPendingDelete(null);
@@ -612,6 +931,10 @@ export default function App() {
       setClearError("Supabase is not configured. Unable to clear records.");
       return;
     }
+    if (!currentTenant) {
+      setClearError("Select a company before managing bookings.");
+      return;
+    }
 
     setIsClearing(true);
     setClearError("");
@@ -619,7 +942,7 @@ export default function App() {
     const ids = records.map((record) => record.id);
 
     try {
-      await removeRecords(ids);
+      await removeRecords(currentTenant.id, ids);
       setClearDialogOpen(false);
       setClearError("");
       setRecords([]);
@@ -661,20 +984,52 @@ export default function App() {
     return filtered;
   }, [records, search, sort]);
 
-  const handleLogin = async ({ email, password }) => {
+  const handleLogin = async ({ email, password, tenant }) => {
     if (!isSupabaseConfigured) {
       throw new Error(
         "Supabase is not configured. Please contact your administrator to enable sign-in."
       );
     }
 
+    if (!tenant?.id) {
+      throw new Error("Please select a company before signing in.");
+    }
+
+    if (enforcedTenant && tenant.id !== enforcedTenant.id) {
+      throw new Error(
+        "You must sign in using the company associated with this subdomain."
+      );
+    }
+
     const session = await signInEmployee({ email, password });
+    const membershipOk = await verifyTenantMembership({
+      tenantId: tenant.id,
+      userId: session.user?.id,
+      identifier: email,
+    });
+
+    if (!membershipOk) {
+      await signOutEmployee();
+      throw new Error(
+        "Your account does not have access to the selected company."
+      );
+    }
+
     const profile = await fetchEmployeeProfile({
       userId: session.user?.id,
       email: session.user?.email || email,
+      tenantId: tenant.id,
     });
     const user = buildUserContext(session.user, profile, lookupEmployeeLabel);
     setCurrentUser(user);
+    setCurrentTenant(tenant);
+    setSelectedTenantForLogin(tenant);
+    setTenantLookupOptions((prev) => {
+      if (prev.some((option) => option.id === tenant.id)) return prev;
+      return [...prev, tenant];
+    });
+    setTenantLookupError("");
+    storeActiveTenant(tenant);
     setCurrentPage("dashboard");
     setSidebarOpen(false);
     setSearch("");
@@ -691,6 +1046,18 @@ export default function App() {
     }
 
     setCurrentUser(null);
+    if (enforcedTenant) {
+      setCurrentTenant(enforcedTenant);
+      setSelectedTenantForLogin(enforcedTenant);
+      setTenantLookupOptions([enforcedTenant]);
+      storeActiveTenant(enforcedTenant);
+    } else {
+      setCurrentTenant(null);
+      setSelectedTenantForLogin(null);
+      setTenantLookupOptions([]);
+      clearStoredTenant();
+    }
+    setTenantLookupError("");
     setCurrentPage("dashboard");
     setSidebarOpen(false);
     setSearch("");
@@ -706,6 +1073,16 @@ export default function App() {
         onLogin={handleLogin}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        tenantOptions={tenantLookupOptions}
+        selectedTenant={selectedTenantForLogin}
+        onSelectTenant={setSelectedTenantForLogin}
+        onLookupTenants={lookupTenantsForIdentifier}
+        tenantLookupLoading={tenantLookupLoading}
+        tenantLookupError={tenantLookupError}
+        tenantDetectionError={tenantDetectionError}
+        isTenantSelectionLocked={Boolean(enforcedTenant)}
+        enforcedTenantSlug={enforcedTenantSlug}
+        enforcedTenantName={enforcedTenant?.name}
       />
     );
   }
