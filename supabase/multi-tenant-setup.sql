@@ -120,6 +120,8 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.is_tenant_member(uuid) TO authenticated;
 
+DROP FUNCTION IF EXISTS public.lookup_tenants(text);
+
 CREATE OR REPLACE FUNCTION public.lookup_tenants(identifier text)
 RETURNS TABLE (
   id uuid,
@@ -215,6 +217,9 @@ CREATE POLICY "Tenant records delete" ON public.records
   FOR DELETE
   TO authenticated
   USING (public.is_tenant_member(tenant_id));
+
+-- Ensure PostgREST (and thus Supabase) reloads the function definitions immediately.
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 

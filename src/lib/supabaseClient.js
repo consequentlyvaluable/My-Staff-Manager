@@ -464,15 +464,98 @@ export const removeRecords = async (tenantId, ids) => {
 
 const normalizeIdentifier = (value) => value?.trim().toLowerCase() ?? "";
 
+const lookupTenantsViaMemberships = async (identifier) => {
+  const params = new URLSearchParams();
+  params.set(
+    "select",
+    "tenant:tenant_id(id,slug,name,primary_domain,is_active)"
+  );
+  params.append("identifier", `eq.${encodeURIComponent(identifier)}`);
+  params.append("is_active", "is.true");
+  params.append("tenant.is_active", "is.true");
+
+  const rows = await request(`tenant_memberships?${params.toString()}`);
+  if (!Array.isArray(rows)) return [];
+
+  const unique = new Map();
+  for (const row of rows) {
+    const tenant = row?.tenant;
+    if (!tenant?.id) continue;
+    if (tenant.is_active === false) continue;
+    if (unique.has(tenant.id)) continue;
+    unique.set(tenant.id, {
+      id: tenant.id,
+      slug: typeof tenant.slug === "string" ? tenant.slug : null,
+      name: typeof tenant.name === "string" ? tenant.name : tenant.slug,
+      primary_domain:
+        typeof tenant.primary_domain === "string"
+          ? tenant.primary_domain
+          : null,
+    });
+  }
+
+  return Array.from(unique.values()).filter((tenant) => tenant?.id);
+};
+
+const isLookupFunctionMissing = (message) => {
+  if (typeof message !== "string") return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("lookup_tenants") &&
+    (normalized.includes("schema cache") ||
+      normalized.includes("not found") ||
+      normalized.includes("does not exist"))
+  );
+};
+
 export const fetchTenantsForIdentifier = async (identifier) => {
   if (!isSupabaseConfigured) return [];
   const normalized = normalizeIdentifier(identifier);
   if (!normalized) return [];
 
-  const result = await rpc("lookup_tenants", { identifier: normalized });
-  if (!result) return [];
-  if (Array.isArray(result)) return result;
-  return [result].filter(Boolean);
+  try {
+    const result = await rpc("lookup_tenants", { identifier: normalized });
+    if (!result) return [];
+    if (Array.isArray(result)) return result;
+    return [result].filter(Boolean);
+  } catch (error) {
+    console.warn("lookup_tenants RPC failed, attempting fallback", error);
+
+    try {
+      const fallbackTenants = await lookupTenantsViaMemberships(normalized);
+      if (fallbackTenants.length > 0) {
+        return fallbackTenants;
+      }
+
+      if (isLookupFunctionMissing(error?.message)) {
+        throw new Error(
+          "The company directory is still syncing. Run supabase/multi-tenant-setup.sql in Supabase and refresh the page."
+        );
+      }
+
+      return [];
+    } catch (fallbackError) {
+      console.error("Tenant lookup fallback failed", fallbackError);
+
+      if (fallbackError?.message) {
+        throw new Error(fallbackError.message);
+      }
+
+      if (isLookupFunctionMissing(error?.message)) {
+        throw new Error(
+          "The company directory function is missing. Apply supabase/multi-tenant-setup.sql and try again."
+        );
+      }
+
+      if (error?.message) {
+        throw new Error(error.message);
+      }
+
+      throw new Error(
+        "Unable to look up companies for this account. Please try again."
+      );
+    }
+  }
 };
 
 export const fetchTenantBySlug = async (slug) => {
