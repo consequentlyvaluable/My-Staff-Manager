@@ -19,12 +19,18 @@ export default function EmployeeList({
   deleteRecord,
   loading = false,
 }) {
+  const searchInputId = "employee-list-search";
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <h2 className="text-xl font-semibold text-gray-700 mb-4 dark:text-gray-200">Employees</h2>
 
       {/* Search bar */}
+      <label htmlFor={searchInputId} className="sr-only">
+        Search employees by name
+      </label>
       <input
+        id={searchInputId}
+        name="employeeSearch"
         type="text"
         placeholder="Search employees..."
         className="border rounded px-3 py-2 mb-4 w-full md:w-1/2 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"

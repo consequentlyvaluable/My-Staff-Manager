@@ -20,10 +20,12 @@ export default function Sidebar({
         <div className="flex justify-between items-center mb-6 md:hidden">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Menu</h2>
           <button
+            type="button"
             className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar menu"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
         <nav className="space-y-2">

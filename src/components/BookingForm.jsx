@@ -11,6 +11,9 @@ export default function BookingForm({
 }) {
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
+  const bookingTypeSelectId = "booking-form-type";
+  const startInputId = "booking-form-start";
+  const endInputId = "booking-form-end";
   const [showEditPulse, setShowEditPulse] = useState(false);
 
   useEffect(() => {
@@ -98,9 +101,16 @@ export default function BookingForm({
 
         {/* Type */}
         <div className="space-y-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Booking type</label>
+          <label
+            className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            htmlFor={bookingTypeSelectId}
+          >
+            Booking type
+          </label>
           <div className="relative">
             <select
+              id={bookingTypeSelectId}
+              name="bookingType"
               className="w-full appearance-none rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -115,10 +125,15 @@ export default function BookingForm({
         {/* Dates & Times */}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <label
+              className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+              htmlFor={startInputId}
+            >
               Start date & time
             </label>
             <input
+              id={startInputId}
+              name="bookingStart"
               type="datetime-local"
               className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
               value={form.start}
@@ -127,10 +142,15 @@ export default function BookingForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <label
+              className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+              htmlFor={endInputId}
+            >
               End date & time
             </label>
             <input
+              id={endInputId}
+              name="bookingEnd"
               type="datetime-local"
               className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
               value={form.end}

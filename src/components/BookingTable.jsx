@@ -25,6 +25,7 @@ export default function BookingTable({
 }) {
   const [pulsingId, setPulsingId] = useState(null);
   const pulseTimeoutRef = useRef();
+  const searchInputId = "booking-table-search";
 
   useEffect(() => {
     return () => {
@@ -63,7 +64,12 @@ export default function BookingTable({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Schedule</h2>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label htmlFor={searchInputId} className="sr-only">
+            Search bookings by name or type
+          </label>
           <input
+            id={searchInputId}
+            name="bookingSearch"
             type="text"
             placeholder="Search by name or type..."
             className="border rounded px-2 py-1 text-sm w-full sm:w-48 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"

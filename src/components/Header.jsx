@@ -20,10 +20,12 @@ export default function Header({
     <header className="bg-white shadow px-6 py-4 flex items-center justify-between transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <div className="flex items-center gap-4">
         <button
+          type="button"
           className="md:hidden p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
           onClick={onSidebarToggle}
+          aria-label="Open sidebar menu"
         >
-          <div className="space-y-1">
+          <div className="space-y-1" aria-hidden="true">
             <div className="w-6 h-0.5 bg-gray-600 dark:bg-gray-300"></div>
             <div className="w-6 h-0.5 bg-gray-600 dark:bg-gray-300"></div>
             <div className="w-6 h-0.5 bg-gray-600 dark:bg-gray-300"></div>
