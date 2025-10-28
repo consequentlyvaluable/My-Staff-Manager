@@ -121,6 +121,79 @@ const getAuthHeaders = async () => {
   return baseHeaders;
 };
 
+const base64UrlDecode = (value) => {
+  if (typeof value !== "string" || !value) return null;
+
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded =
+    padding === 0 ? normalized : normalized.padEnd(normalized.length + (4 - padding), "=");
+
+  try {
+    if (typeof atob === "function") {
+      const binary = atob(padded);
+      if (typeof TextDecoder === "function") {
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+      return binary;
+    }
+  } catch (error) {
+    console.warn("Failed to decode base64 token with atob", error);
+  }
+
+  try {
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(padded, "base64").toString("utf-8");
+    }
+  } catch (error) {
+    console.warn("Failed to decode base64 token with Buffer", error);
+  }
+
+  return null;
+};
+
+const decodeJwtPayload = (token) => {
+  if (typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  const decoded = base64UrlDecode(parts[1]);
+  if (!decoded) return null;
+  try {
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.warn("Failed to parse JWT payload", error);
+    return null;
+  }
+};
+
+const extractTenantIdFromSession = (session) => {
+  if (!session) return null;
+
+  const explicitTenantId =
+    session.user?.app_metadata?.tenant_id ||
+    session.user?.app_metadata?.tenantId ||
+    session.user?.user_metadata?.tenant_id ||
+    session.user?.user_metadata?.tenantId;
+
+  if (explicitTenantId) {
+    return String(explicitTenantId).trim() || null;
+  }
+
+  const claims = decodeJwtPayload(session.access_token);
+  const claimTenantId =
+    claims?.tenant_id ||
+    claims?.tenantId ||
+    claims?.app_metadata?.tenant_id ||
+    claims?.app_metadata?.tenantId;
+
+  if (claimTenantId) {
+    return String(claimTenantId).trim() || null;
+  }
+
+  return null;
+};
+
 const parseResponse = async (response) => {
   if (!response.ok) {
     let message = `Supabase request failed with status ${response.status}`;
@@ -344,11 +417,33 @@ export const fetchRecords = async () => {
 };
 
 export const createRecord = async (record) => {
+  const payload = { ...record };
+
+  if (!payload.tenant_id || `${payload.tenant_id}`.trim() === "") {
+    if (!isSupabaseConfigured) {
+      throw new Error("Supabase is not configured. Unable to save record.");
+    }
+
+    const session = await ensureActiveSession();
+    if (!session) {
+      throw new Error("You must be signed in before creating a booking.");
+    }
+
+    const tenantId = extractTenantIdFromSession(session);
+    if (!tenantId) {
+      throw new Error(
+        "Authenticated session is missing a tenant context. Please contact your administrator."
+      );
+    }
+
+    payload.tenant_id = tenantId;
+  }
+
   const params = new URLSearchParams({ select: "*" });
   const data = await request(`records?${params.toString()}`, {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify(record),
+    body: JSON.stringify(payload),
   });
   if (Array.isArray(data)) {
     return data[0] ?? null;
