@@ -22,6 +22,9 @@ export default function BookingTable({
   clearAll,
   isClearing = false,
   hasAnyRecords = false,
+  canEditRecord = () => true,
+  canDeleteRecord = () => true,
+  canClearAll = true,
 }) {
   const [pulsingId, setPulsingId] = useState(null);
   const pulseTimeoutRef = useRef();
@@ -74,7 +77,7 @@ export default function BookingTable({
             <button
               className="bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg shadow text-sm"
               onClick={clearAll}
-              disabled={isClearing}
+              disabled={isClearing || !canClearAll}
             >
               {isClearing ? "Clearing..." : "Clear All"}
             </button>
@@ -106,6 +109,8 @@ export default function BookingTable({
         </thead>
         <tbody>
           {records.map((r) => {
+            const allowEdit = canEditRecord(r);
+            const allowDelete = canDeleteRecord(r);
             return (
               <tr
                 key={r.id}
@@ -131,16 +136,18 @@ export default function BookingTable({
                 </td>
                 <td className="border border-gray-100 p-2 text-center space-x-2 dark:border-gray-600">
                   <button
-                    onClick={() => handleEditClick(r)}
-                    className={`bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs ${
+                    onClick={() => allowEdit && handleEditClick(r)}
+                    disabled={!allowEdit}
+                    className={`bg-yellow-400 hover:bg-yellow-500 disabled:bg-yellow-300 disabled:cursor-not-allowed text-white px-2 py-1 rounded text-xs ${
                       pulsingId === r.id ? "pulse-once" : ""
                     }`}
                   >
                     Edit
                   </button>
                   <button
-                    onClick={() => deleteRecord(r.id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
+                    onClick={() => allowDelete && deleteRecord(r.id)}
+                    disabled={!allowDelete}
+                    className="bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white px-2 py-1 rounded text-xs"
                   >
                     Delete
                   </button>

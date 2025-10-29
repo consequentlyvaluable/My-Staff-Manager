@@ -290,14 +290,18 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
 
   if (userId) {
     const profile = await fetchProfileByPath(
-      `employee_profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,employee_label,display_name,email`
+      `employee_profiles?user_id=eq.${encodeURIComponent(
+        userId
+      )}&select=*`
     );
     if (profile) return profile;
   }
 
   if (email) {
     const profile = await fetchProfileByPath(
-      `employee_profiles?email=eq.${encodeURIComponent(email.toLowerCase())}&select=user_id,employee_label,display_name,email`
+      `employee_profiles?email=eq.${encodeURIComponent(
+        email.toLowerCase()
+      )}&select=*`
     );
     if (profile) return profile;
   }

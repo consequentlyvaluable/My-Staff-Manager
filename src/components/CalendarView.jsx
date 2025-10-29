@@ -43,6 +43,8 @@ export default function CalendarView({
   setCurrentView,
   onEventDrop,
   onEventResize,
+  canModifyEmployee = () => true,
+  allowEventEditing = true,
 }) {
   const events = records
     .map((r) => {
@@ -53,6 +55,7 @@ export default function CalendarView({
       const endHasTime = hasExplicitTime(r.end);
       return {
         id: r.id,
+        employeeLabel: r.name,
         title: `${r.name} - ${r.type} ${r.type === "Vacation" ? "🌴" : "✈️"}`,
         start: startDate,
         end: endDate,
@@ -89,10 +92,15 @@ export default function CalendarView({
               padding: "2px 4px",
             },
           })}
-          onEventDrop={onEventDrop}
-          onEventResize={onEventResize}
-          resizable
-          draggableAccessor={() => true}
+          onEventDrop={allowEventEditing ? onEventDrop : undefined}
+          onEventResize={allowEventEditing ? onEventResize : undefined}
+          resizable={allowEventEditing}
+          draggableAccessor={(event) =>
+            allowEventEditing && canModifyEmployee(event.employeeLabel)
+          }
+          resizableAccessor={(event) =>
+            allowEventEditing && canModifyEmployee(event.employeeLabel)
+          }
         />
       </div>
     </DndProvider>
