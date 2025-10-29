@@ -456,7 +456,7 @@ export default function App() {
           "Failed to update record from calendar interaction",
           error
         );
-        alert("Failed to update booking. Please try again.");
+        alert(error?.message || "Failed to update booking. Please try again.");
         if (previousEvent) {
           setRecords((prev) =>
             prev.map((rec) => (rec.id === event.id ? previousEvent : rec))
@@ -532,7 +532,7 @@ export default function App() {
       setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
     } catch (err) {
       console.error("Failed to save record", err);
-      alert("Failed to save record. Please try again.");
+      alert(err?.message || "Failed to save record. Please try again.");
     } finally {
       setIsSaving(false);
     }

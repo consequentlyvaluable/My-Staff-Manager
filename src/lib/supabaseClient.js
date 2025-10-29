@@ -4,6 +4,7 @@ const DEFAULT_SUPABASE_ANON_KEY =
 
 const envSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 const envSupabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+const envSupabaseTenantId = (import.meta.env.VITE_SUPABASE_TENANT_ID || "").trim();
 
 const hasEnvSupabaseConfig = Boolean(envSupabaseUrl && envSupabaseAnonKey);
 
@@ -72,14 +73,21 @@ const refreshSession = async (refreshToken) => {
     throw new Error("Supabase session expired and cannot be refreshed.");
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...baseHeaders,
-    },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...baseHeaders,
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch (error) {
+    throw new Error(
+      `Unable to refresh Supabase session. ${error?.message || "Network request failed."}`
+    );
+  }
 
   const session = await parseResponse(response);
   if (!session?.user || !session?.access_token) {
@@ -167,29 +175,61 @@ const decodeJwtPayload = (token) => {
   }
 };
 
+const TENANT_ID_KEYS = [
+  "tenant_id",
+  "tenantId",
+  "tenant",
+  "default_tenant_id",
+  "defaultTenantId",
+];
+
+const normalizeTenantIdValue = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = String(value).trim();
+    return normalized || null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const normalized = normalizeTenantIdValue(entry);
+      if (normalized) return normalized;
+    }
+    return null;
+  }
+
+  if (typeof value === "object") {
+    for (const key of TENANT_ID_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const normalized = normalizeTenantIdValue(value[key]);
+        if (normalized) return normalized;
+      }
+    }
+    // Sometimes metadata is a nested object like { tenants: [{ id: "..." }] }
+    for (const entry of Object.values(value)) {
+      const normalized = normalizeTenantIdValue(entry);
+      if (normalized) return normalized;
+    }
+  }
+
+  return null;
+};
+
 const extractTenantIdFromSession = (session) => {
   if (!session) return null;
 
-  const explicitTenantId =
-    session.user?.app_metadata?.tenant_id ||
-    session.user?.app_metadata?.tenantId ||
-    session.user?.user_metadata?.tenant_id ||
-    session.user?.user_metadata?.tenantId;
-
-  if (explicitTenantId) {
-    return String(explicitTenantId).trim() || null;
-  }
+  const fromMetadata =
+    normalizeTenantIdValue(session.user?.app_metadata) ||
+    normalizeTenantIdValue(session.user?.user_metadata);
+  if (fromMetadata) return fromMetadata;
 
   const claims = decodeJwtPayload(session.access_token);
-  const claimTenantId =
-    claims?.tenant_id ||
-    claims?.tenantId ||
-    claims?.app_metadata?.tenant_id ||
-    claims?.app_metadata?.tenantId;
-
-  if (claimTenantId) {
-    return String(claimTenantId).trim() || null;
-  }
+  const fromClaims =
+    normalizeTenantIdValue(claims) ||
+    normalizeTenantIdValue(claims?.app_metadata) ||
+    normalizeTenantIdValue(claims?.user_metadata);
+  if (fromClaims) return fromClaims;
 
   return null;
 };
@@ -208,14 +248,14 @@ const ensureTenantScopedPayload = async (payload, { action = "perform this actio
     throw new Error(`You must be signed in before you can ${action}.`);
   }
 
-  const tenantId = extractTenantIdFromSession(session);
+  const tenantId = envSupabaseTenantId || extractTenantIdFromSession(session);
   if (!tenantId) {
     throw new Error(
-      "Authenticated session is missing a tenant context. Please contact your administrator."
+      "Authenticated session is missing a tenant context. Set VITE_SUPABASE_TENANT_ID or update the Supabase JWT claims."
     );
   }
 
-  return { ...payload, tenant_id: tenantId };
+  return { ...payload, tenant_id: String(tenantId).trim() };
 };
 
 const parseResponse = async (response) => {
@@ -268,25 +308,40 @@ const request = async (path, { method = "GET", body, headers = {} } = {}) => {
     ...headers,
   });
 
-  let response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    method,
-    headers: await buildHeaders(),
-    body,
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+      method,
+      headers: await buildHeaders(),
+      body,
+    });
+  } catch (error) {
+    throw new Error(
+      `Unable to reach Supabase REST endpoint. ${error?.message || "Network request failed."}`
+    );
+  }
 
   if (response.status === 401) {
     const refreshed = await tryRefreshSession();
     if (refreshed?.access_token) {
-      response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${refreshed.access_token}`,
-          ...headers,
-        },
-        body,
-      });
+      try {
+        response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${refreshed.access_token}`,
+            ...headers,
+          },
+          body,
+        });
+      } catch (error) {
+        throw new Error(
+          `Unable to reach Supabase REST endpoint after refreshing the session. ${
+            error?.message || "Network request failed."
+          }`
+        );
+      }
     }
   }
 
@@ -321,14 +376,21 @@ export const signInEmployee = async ({ email, password }) => {
     throw new Error("Password is required.");
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...baseHeaders,
-    },
-    body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...baseHeaders,
+      },
+      body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+    });
+  } catch (error) {
+    throw new Error(
+      `Unable to contact Supabase authentication. ${error?.message || "Network request failed."}`
+    );
+  }
 
   const session = await parseResponse(response);
   if (!session?.user) {
@@ -348,14 +410,24 @@ export const signOutEmployee = async () => {
     return;
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+  } catch (error) {
+    console.warn(
+      "Supabase logout network request failed",
+      error?.message || error
+    );
+    persistSession(null);
+    return;
+  }
 
   try {
     await parseResponse(response);
