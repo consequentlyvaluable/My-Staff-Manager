@@ -26,6 +26,61 @@ import {
 const stripEmployeeLabel = (label) =>
   typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
 
+const inferTeamIdentifier = (label) => {
+  if (typeof label !== "string") return "";
+  const match = label.match(/\(([^)]+)\)\s*$/);
+  if (!match) return "";
+  return match[1]?.trim?.() ?? "";
+};
+
+const normalizeRole = (value) => {
+  if (typeof value !== "string") return "";
+  const cleaned = value.trim().toLowerCase();
+  if (!cleaned) return "";
+  if (["admin", "administrator", "owner"].includes(cleaned)) return "admin";
+  if (["viewer", "read_only", "read-only", "readonly", "view"].includes(cleaned)) {
+    return "viewer";
+  }
+  if (["team_lead", "teamlead", "lead", "leader"].includes(cleaned)) {
+    return "team_lead";
+  }
+  if (["self", "self_edit", "self-editor", "self_editor"].includes(cleaned)) {
+    return "self_editor";
+  }
+  return cleaned;
+};
+
+const coerceBoolean = (value, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return fallback;
+    if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+  }
+  if (value == null) return fallback;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return Boolean(value);
+};
+
+const toStringArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/[,;\n]/)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+  return [];
+};
+
 const buildEmployeeLookup = (list) => {
   const lookup = new Map();
   for (const entry of list) {
@@ -85,11 +140,71 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
     if (employeeLabel) break;
   }
 
+  const resolvedRole = normalizeRole(profile?.role || metadata.role);
+  const defaultManageAll = resolvedRole ? resolvedRole === "admin" : true;
+  let canManageAll = coerceBoolean(
+    profile?.can_manage_all ?? metadata.can_manage_all,
+    defaultManageAll
+  );
+  let canEditTeam = coerceBoolean(
+    profile?.can_edit_team ?? metadata.can_edit_team,
+    resolvedRole ? resolvedRole === "team_lead" || canManageAll : canManageAll
+  );
+  let canEditSelf = coerceBoolean(
+    profile?.can_edit_self ?? metadata.can_edit_self,
+    canEditTeam || canManageAll || resolvedRole === "self_editor"
+  );
+  const isReadOnly = coerceBoolean(
+    profile?.is_read_only ?? metadata.is_read_only,
+    resolvedRole === "viewer"
+  );
+
+  if (isReadOnly) {
+    canManageAll = false;
+    canEditTeam = false;
+    canEditSelf = false;
+  }
+
+  const teamIdentifier =
+    (typeof profile?.team_identifier === "string"
+      ? profile.team_identifier.trim()
+      : "") ||
+    (typeof metadata.team_identifier === "string"
+      ? metadata.team_identifier.trim()
+      : "") ||
+    inferTeamIdentifier(employeeLabel);
+
+  const explicitTeamMembers = toStringArray(
+    profile?.team_member_labels ?? metadata.team_member_labels
+  );
+
+  const permissions = {
+    role:
+      resolvedRole ||
+      (isReadOnly
+        ? "viewer"
+        : canManageAll
+        ? "admin"
+        : canEditTeam
+        ? "team_lead"
+        : canEditSelf
+        ? "self_editor"
+        : "viewer"),
+    canManageAll,
+    canEditTeam,
+    canEditSelf,
+    isReadOnly,
+  };
+
   return {
     id: authUser.id,
     name,
     email,
     employeeLabel,
+    role: permissions.role,
+    permissions,
+    teamIdentifier,
+    teamMemberLabels: explicitTeamMembers,
   };
 };
 
@@ -171,6 +286,99 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+
+  const canManageAll = currentUser?.permissions?.canManageAll ?? true;
+  const canEditTeam = currentUser?.permissions?.canEditTeam ?? canManageAll;
+  const canEditSelf = currentUser?.permissions?.canEditSelf ?? true;
+  const isReadOnly = currentUser?.permissions?.isReadOnly ?? false;
+
+  const teamIdentifierFromUser = useMemo(() => {
+    if (!currentUser) return "";
+    return (
+      currentUser.teamIdentifier ||
+      inferTeamIdentifier(currentUser.employeeLabel ?? "")
+    );
+  }, [currentUser]);
+
+  const { allowedSet: allowedEmployeeSet, allowedList: allowedEmployeeList } = useMemo(() => {
+    const set = new Set();
+    if (currentUser?.employeeLabel) {
+      set.add(currentUser.employeeLabel);
+    }
+
+    const explicit = Array.isArray(currentUser?.teamMemberLabels)
+      ? currentUser.teamMemberLabels.filter((label) => typeof label === "string" && label.trim().length > 0)
+      : [];
+    for (const label of explicit) {
+      set.add(label);
+    }
+
+    if (canManageAll) {
+      for (const label of employees) {
+        set.add(label);
+      }
+    } else if (canEditTeam) {
+      const teamId = teamIdentifierFromUser;
+      if (teamId) {
+        for (const label of employees) {
+          if (inferTeamIdentifier(label) === teamId) {
+            set.add(label);
+          }
+        }
+      }
+    }
+
+    return { allowedSet: set, allowedList: Array.from(set) };
+  }, [currentUser, employees, canManageAll, canEditTeam, teamIdentifierFromUser]);
+
+  const canModifyEmployee = useCallback(
+    (label) => {
+      if (!currentUser) return false;
+      if (isReadOnly) return false;
+      if (canManageAll) return true;
+      const normalized = typeof label === "string" ? label.trim() : "";
+      if (!normalized) return false;
+      if (canEditSelf && normalized === currentUser.employeeLabel) return true;
+      if (canEditTeam && allowedEmployeeSet.has(normalized)) return true;
+      return false;
+    },
+    [currentUser, isReadOnly, canManageAll, canEditSelf, canEditTeam, allowedEmployeeSet]
+  );
+
+  const canEditRecord = useCallback(
+    (record) => {
+      if (!record) return false;
+      return canModifyEmployee(record.name);
+    },
+    [canModifyEmployee]
+  );
+
+  const canClearAllRecords = canManageAll && !isReadOnly;
+
+  const availableEmployeesForForm = useMemo(() => {
+    if (!currentUser) return employees;
+    if (canManageAll) return employees;
+    if (allowedEmployeeList.length > 0) return allowedEmployeeList;
+    return currentUser.employeeLabel ? [currentUser.employeeLabel] : [];
+  }, [currentUser, employees, canManageAll, allowedEmployeeList]);
+
+  const canCreateOrEdit = !isReadOnly && (canManageAll || canEditTeam || canEditSelf);
+
+  const bookingFormHelperText = useMemo(() => {
+    if (isReadOnly) {
+      return "You currently have read-only access.";
+    }
+    if (canManageAll) {
+      return "You can manage bookings for all employees.";
+    }
+    if (canEditTeam) {
+      return "You can manage bookings for team members.";
+    }
+    if (canEditSelf) {
+      return "You can manage your own bookings.";
+    }
+    return "You do not have permission to manage bookings.";
+  }, [isReadOnly, canManageAll, canEditTeam, canEditSelf]);
 
   const employeeLookup = useMemo(
     () => buildEmployeeLookup(employees),
@@ -371,6 +579,10 @@ export default function App() {
       if (!event?.id) return;
       const target = records.find((r) => r.id === event.id);
       if (!target) return;
+      if (!canEditRecord(target)) {
+        alert("You do not have permission to modify this booking.");
+        return;
+      }
 
       const nextStart = start instanceof Date ? start : new Date(start);
       const nextEnd = end instanceof Date ? end : new Date(end);
@@ -464,27 +676,60 @@ export default function App() {
         }
       }
     },
-    [records, isSupabaseConfigured]
+    [records, isSupabaseConfigured, canEditRecord]
   );
 
   const handleCalendarEventDrop = useCallback(
     (args) => {
+      const target = records.find((r) => r.id === args?.event?.id);
+      if (!target) return;
+      if (!canEditRecord(target)) {
+        alert("You do not have permission to modify this booking.");
+        return;
+      }
       void handleCalendarUpdate(args);
     },
-    [handleCalendarUpdate]
+    [records, canEditRecord, handleCalendarUpdate]
   );
 
   const handleCalendarEventResize = useCallback(
     (args) => {
+      const target = records.find((r) => r.id === args?.event?.id);
+      if (!target) return;
+      if (!canEditRecord(target)) {
+        alert("You do not have permission to modify this booking.");
+        return;
+      }
       void handleCalendarUpdate(args);
     },
-    [handleCalendarUpdate]
+    [records, canEditRecord, handleCalendarUpdate]
   );
 
   const handleSubmit = async () => {
+    if (editingId) {
+      const existing = records.find((r) => r.id === editingId);
+      if (!existing) {
+        alert("The booking you were editing is no longer available.");
+        setEditingId(null);
+        setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
+        return;
+      }
+      if (!canEditRecord(existing)) {
+        alert("You do not have permission to update this booking.");
+        return;
+      }
+    } else if (!canCreateOrEdit) {
+      alert("You do not have permission to create bookings.");
+      return;
+    }
+
     const error = validateRecord();
     if (error) {
       alert(error);
+      return;
+    }
+    if (!canModifyEmployee(form.name)) {
+      alert("You do not have permission to manage bookings for this employee.");
       return;
     }
     if (!isSupabaseConfigured) {
@@ -541,11 +786,19 @@ export default function App() {
   const deleteRecord = (id) => {
     const rec = records.find((r) => r.id === id);
     if (!rec) return;
+    if (!canEditRecord(rec)) {
+      alert("You do not have permission to delete this booking.");
+      return;
+    }
     setDeleteError("");
     setPendingDelete(rec);
   };
 
   const startEdit = (record) => {
+    if (!canEditRecord(record)) {
+      alert("You do not have permission to edit this booking.");
+      return;
+    }
     setForm({
       name: record.name,
       type: record.type,
@@ -568,6 +821,10 @@ export default function App() {
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
+    if (!canEditRecord(pendingDelete)) {
+      setDeleteError("You do not have permission to delete this booking.");
+      return;
+    }
     if (!isSupabaseConfigured) {
       setDeleteError("Supabase is not configured. Unable to delete record.");
       return;
@@ -591,6 +848,10 @@ export default function App() {
 
   const clearAll = () => {
     if (records.length === 0 || isClearing) return;
+    if (!canClearAllRecords) {
+      alert("Only administrators can clear all bookings.");
+      return;
+    }
     setClearError("");
     setClearDialogOpen(true);
   };
@@ -605,6 +866,11 @@ export default function App() {
     if (records.length === 0) {
       setClearDialogOpen(false);
       setClearError("");
+      return;
+    }
+
+    if (!canClearAllRecords) {
+      setClearError("You do not have permission to clear all bookings.");
       return;
     }
 
@@ -733,11 +999,13 @@ export default function App() {
                 <BookingForm
                   form={form}
                   setForm={setForm}
-                  employees={employees}
+                  employees={availableEmployeesForForm}
                   handleSubmit={handleSubmit}
                   editingId={editingId}
                   cancelEdit={cancelEdit}
                   isSaving={isSaving}
+                  isDisabled={!canCreateOrEdit}
+                  helperText={bookingFormHelperText}
                 />
                 {loadingEmployees && (
                   <div className="bg-white p-6 rounded-2xl shadow text-center text-gray-600 dark:bg-gray-800 dark:text-gray-200">
@@ -770,6 +1038,9 @@ export default function App() {
                     clearAll={clearAll}
                     isClearing={isClearing}
                     hasAnyRecords={records.length > 0}
+                    canEditRecord={canEditRecord}
+                    canDeleteRecord={canEditRecord}
+                    canClearAll={canClearAllRecords}
                   />
                 )}
               </div>
@@ -782,6 +1053,8 @@ export default function App() {
                   setCurrentView={setCurrentView}
                   onEventDrop={handleCalendarEventDrop}
                   onEventResize={handleCalendarEventResize}
+                  canModifyEmployee={canModifyEmployee}
+                  allowEventEditing={canCreateOrEdit}
                 />
               </div>
             </div>

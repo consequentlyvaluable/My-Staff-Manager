@@ -8,6 +8,8 @@ export default function BookingForm({
   editingId,
   cancelEdit,
   isSaving = false,
+  isDisabled = false,
+  helperText = "",
 }) {
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
@@ -54,6 +56,7 @@ export default function BookingForm({
             type="button"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-sky-200 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={cancelEdit}
+            disabled={isDisabled}
           >
             <span aria-hidden="true">↺</span>
             Cancel editing
@@ -64,13 +67,23 @@ export default function BookingForm({
       <p className="relative mt-3 text-sm text-slate-500 dark:text-slate-400">
         Choose the employee, booking type, and exact time range.
       </p>
+      {helperText && (
+        <p className="relative mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {helperText}
+        </p>
+      )}
+      {isDisabled && (
+        <p className="relative mt-2 text-xs text-amber-600 dark:text-amber-300">
+          Editing is disabled for your account.
+        </p>
+      )}
 
       <div className="relative mt-6 space-y-6">
         {/* Employee */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <label htmlFor={employeeInputId}>Employee</label>
-            
+
           </div>
           <div className="group relative">
             <input
@@ -81,6 +94,7 @@ export default function BookingForm({
               className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              disabled={isDisabled}
             />
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400 transition group-focus-within:text-sky-500 dark:text-slate-500">
               ▼
@@ -104,6 +118,7 @@ export default function BookingForm({
               className="w-full appearance-none rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
+              disabled={isDisabled}
             >
               <option>Vacation</option>
               <option>Travel</option>
@@ -124,6 +139,7 @@ export default function BookingForm({
               value={form.start}
               onChange={(e) => setForm({ ...form, start: e.target.value })}
               step="60"
+              disabled={isDisabled}
             />
           </div>
           <div className="space-y-2">
@@ -136,6 +152,7 @@ export default function BookingForm({
               value={form.end}
               onChange={(e) => setForm({ ...form, end: e.target.value })}
               step="60"
+              disabled={isDisabled}
             />
           </div>
         </div>
@@ -150,7 +167,7 @@ export default function BookingForm({
         <button
           className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:from-sky-600 hover:via-blue-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           onClick={handleSubmit}
-          disabled={isSaving}
+          disabled={isSaving || isDisabled}
         >
           <span className="text-lg">{editingId ? "✓" : "+"}</span>
           <span>{isSaving ? "Saving..." : editingId ? "Update booking" : "Add booking"}</span>
