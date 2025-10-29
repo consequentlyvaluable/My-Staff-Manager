@@ -194,6 +194,30 @@ const extractTenantIdFromSession = (session) => {
   return null;
 };
 
+const ensureTenantScopedPayload = async (payload, { action = "perform this action" } = {}) => {
+  if (payload?.tenant_id && `${payload.tenant_id}`.trim() !== "") {
+    return payload;
+  }
+
+  if (!isSupabaseConfigured) {
+    throw new Error(`Supabase is not configured. Unable to ${action}.`);
+  }
+
+  const session = await ensureActiveSession();
+  if (!session) {
+    throw new Error(`You must be signed in before you can ${action}.`);
+  }
+
+  const tenantId = extractTenantIdFromSession(session);
+  if (!tenantId) {
+    throw new Error(
+      "Authenticated session is missing a tenant context. Please contact your administrator."
+    );
+  }
+
+  return { ...payload, tenant_id: tenantId };
+};
+
 const parseResponse = async (response) => {
   if (!response.ok) {
     let message = `Supabase request failed with status ${response.status}`;
@@ -417,27 +441,9 @@ export const fetchRecords = async () => {
 };
 
 export const createRecord = async (record) => {
-  const payload = { ...record };
-
-  if (!payload.tenant_id || `${payload.tenant_id}`.trim() === "") {
-    if (!isSupabaseConfigured) {
-      throw new Error("Supabase is not configured. Unable to save record.");
-    }
-
-    const session = await ensureActiveSession();
-    if (!session) {
-      throw new Error("You must be signed in before creating a booking.");
-    }
-
-    const tenantId = extractTenantIdFromSession(session);
-    if (!tenantId) {
-      throw new Error(
-        "Authenticated session is missing a tenant context. Please contact your administrator."
-      );
-    }
-
-    payload.tenant_id = tenantId;
-  }
+  const payload = await ensureTenantScopedPayload({ ...record }, {
+    action: "create a booking",
+  });
 
   const params = new URLSearchParams({ select: "*" });
   const data = await request(`records?${params.toString()}`, {
@@ -452,11 +458,15 @@ export const createRecord = async (record) => {
 };
 
 export const updateRecord = async (id, record) => {
+  const payload = await ensureTenantScopedPayload({ ...record }, {
+    action: "update this booking",
+  });
+
   const params = new URLSearchParams({ select: "*" });
   const data = await request(`records?id=eq.${id}&${params.toString()}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify(record),
+    body: JSON.stringify(payload),
   });
   if (Array.isArray(data)) {
     return data[0] ?? null;
