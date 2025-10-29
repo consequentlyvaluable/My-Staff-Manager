@@ -280,7 +280,7 @@ export default function Reports({ records }) {
                     cy="50%"
                     innerRadius={60}
                     outerRadius={100}
-                    paddingAngle={5}
+                    paddingAngle={1}
                     stroke="none"
                   >
                     {typeBreakdown.map((entry, index) => (
