@@ -29,14 +29,26 @@ export default function Reports({ records }) {
   // Bookings per employee
   const bookingsPerEmployee = useMemo(() => {
     const counts = new Map();
-    records.forEach((r) => {
-      if (!r?.name) return;
-      const current = counts.get(r.name) ?? 0;
-      counts.set(r.name, current + 1);
+    records.forEach((record) => {
+      const name = record?.name;
+      if (!name) return;
+
+      const entry =
+        counts.get(name) ?? { name, Vacation: 0, Travel: 0, total: 0 };
+
+      if (record?.type === "Vacation") {
+        entry.Vacation += 1;
+      } else if (record?.type === "Travel") {
+        entry.Travel += 1;
+      }
+
+      entry.total = entry.Vacation + entry.Travel;
+      counts.set(name, entry);
     });
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    return Array.from(counts.values()).sort(
+      (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+    );
   }, [records]);
 
   // Vacation vs Travel
@@ -122,6 +134,7 @@ export default function Reports({ records }) {
     ? `${averageDuration.toFixed(1)} day${averageDuration >= 1.5 ? "s" : ""}`
     : "—";
   const pieColors = ["#22c55e", "#3b82f6"];
+  const typeColors = { Vacation: pieColors[0], Travel: pieColors[1] };
   const summaryCards = [
     {
       title: "Total Bookings",
@@ -159,8 +172,8 @@ export default function Reports({ records }) {
       title: "Most Active",
       value: mostActiveEmployee?.name ?? "—",
       helper: mostActiveEmployee
-        ? `${mostActiveEmployee.count} booking${
-            mostActiveEmployee.count === 1 ? "" : "s"
+        ? `${mostActiveEmployee.total} booking${
+            mostActiveEmployee.total === 1 ? "" : "s"
           } this year`
         : "Waiting for activity",
       icon: "🏆",
@@ -222,12 +235,6 @@ export default function Reports({ records }) {
             {bookingsPerEmployee.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={bookingsPerEmployee}>
-                  <defs>
-                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis
                     dataKey="name"
@@ -250,7 +257,19 @@ export default function Reports({ records }) {
                     labelStyle={{ fontWeight: 600, color: "#1f2937" }}
                   />
                   <Legend />
-                  <Bar dataKey="count" name="Bookings" fill="url(#colorBookings)" radius={[8, 8, 0, 0]} />
+                  <Bar
+                    dataKey="Vacation"
+                    name="Vacation"
+                    stackId="bookings"
+                    fill={typeColors.Vacation}
+                  />
+                  <Bar
+                    dataKey="Travel"
+                    name="Travel"
+                    stackId="bookings"
+                    fill={typeColors.Travel}
+                    radius={[8, 8, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -284,7 +303,10 @@ export default function Reports({ records }) {
                     stroke="none"
                   >
                     {typeBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={typeColors[entry.type] ?? pieColors[index % pieColors.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip
