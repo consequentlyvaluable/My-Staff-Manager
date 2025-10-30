@@ -209,7 +209,11 @@ export const restoreSession = async () => {
   }
 };
 
-export const signInEmployee = async ({ email, password }) => {
+const authenticateWithPassword = async ({
+  email,
+  password,
+  shouldPersistSession = true,
+}) => {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase environment variables are not configured.");
   }
@@ -224,23 +228,39 @@ export const signInEmployee = async ({ email, password }) => {
     throw new Error("Password is required.");
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...baseHeaders,
-    },
-    body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
-  });
+  const response = await fetch(
+    `${supabaseUrl}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...baseHeaders,
+      },
+      body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+    }
+  );
 
   const session = await parseResponse(response);
   if (!session?.user) {
     throw new Error("Invalid authentication response from Supabase.");
   }
 
-  persistSession(session);
+  if (shouldPersistSession) {
+    persistSession(session);
+  }
+
   return session;
 };
+
+export const signInEmployee = async ({ email, password }) =>
+  authenticateWithPassword({ email, password, shouldPersistSession: true });
+
+export const verifyEmployeePassword = async ({ email, password }) =>
+  authenticateWithPassword({
+    email,
+    password,
+    shouldPersistSession: false,
+  });
 
 export const signOutEmployee = async () => {
   if (!isSupabaseConfigured) return;
@@ -268,6 +288,44 @@ export const signOutEmployee = async () => {
   }
 
   persistSession(null);
+};
+
+export const updateEmployeePassword = async ({ password }) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const trimmedPassword = password?.trim();
+  if (!trimmedPassword) {
+    throw new Error("New password is required.");
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("You must be signed in to update your password.");
+  }
+
+  const performUpdate = async (accessToken) =>
+    fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ password: trimmedPassword }),
+    });
+
+  let response = await performUpdate(session.access_token);
+
+  if (response.status === 401) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed?.access_token) {
+      response = await performUpdate(refreshed.access_token);
+    }
+  }
+
+  await parseResponse(response);
 };
 
 const fetchProfileByPath = async (path) => {

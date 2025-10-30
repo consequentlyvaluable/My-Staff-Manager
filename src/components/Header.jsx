@@ -6,6 +6,7 @@ export default function Header({
   onToggleDarkMode,
   user,
   onLogout,
+  onChangePassword,
 }) {
   const initials = user?.name
     ? user.name
@@ -51,14 +52,19 @@ export default function Header({
           </span>
         </button>
         {user && (
-          <UserMenu user={user} initials={initials} onLogout={onLogout} />
+          <UserMenu
+            user={user}
+            initials={initials}
+            onLogout={onLogout}
+            onChangePassword={onChangePassword}
+          />
         )}
       </div>
     </header>
   );
 }
 
-function UserMenu({ user, initials, onLogout }) {
+function UserMenu({ user, initials, onLogout, onChangePassword }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -86,6 +92,13 @@ function UserMenu({ user, initials, onLogout }) {
     onLogout();
   };
 
+  const handleChangePassword = () => {
+    setOpen(false);
+    if (typeof onChangePassword === "function") {
+      onChangePassword();
+    }
+  };
+
   return (
     <div className="relative flex items-center gap-3" ref={menuRef}>
       <div className="hidden text-right sm:block">
@@ -110,6 +123,13 @@ function UserMenu({ user, initials, onLogout }) {
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleChangePassword}
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700/60 dark:focus:ring-offset-gray-900"
+          >
+            Change password
+          </button>
           <button
             type="button"
             onClick={handleLogout}
