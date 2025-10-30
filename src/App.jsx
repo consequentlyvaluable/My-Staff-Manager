@@ -7,6 +7,7 @@ import CalendarView from "./components/CalendarView";
 import EmployeeList from "./components/EmployeeList";
 import Reports from "./components/Reports";
 import ConfirmDialog from "./components/ConfirmDialog";
+import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
@@ -18,7 +19,9 @@ import {
   isSupabaseConfigured,
   fetchEmployees,
   signInEmployee,
+  verifyEmployeePassword,
   signOutEmployee,
+  updateEmployeePassword,
   fetchEmployeeProfile,
   restoreSession,
 } from "./lib/supabaseClient";
@@ -286,6 +289,10 @@ export default function App() {
   const [currentView, setCurrentView] = useState("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState("");
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
 
   const canManageAll = currentUser?.permissions?.canManageAll ?? true;
   const canEditTeam = currentUser?.permissions?.canEditTeam ?? canManageAll;
@@ -394,6 +401,75 @@ export default function App() {
     },
     [employeeLookup]
   );
+
+  const openChangePasswordDialog = () => {
+    setChangePasswordOpen(true);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+    setChangePasswordLoading(false);
+  };
+
+  const closeChangePasswordDialog = () => {
+    if (changePasswordLoading) return;
+    setChangePasswordOpen(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+  };
+
+  const handleChangePasswordSubmit = async ({
+    currentPassword,
+    newPassword,
+  }) => {
+    if (!currentUser?.email) {
+      setChangePasswordError(
+        "Unable to verify your account. Please sign out and sign in again."
+      );
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+
+    try {
+      await verifyEmployeePassword({
+        email: currentUser.email,
+        password: currentPassword,
+      });
+    } catch (error) {
+      setChangePasswordLoading(false);
+      setChangePasswordError(
+        error?.message || "Your current password is incorrect."
+      );
+      return;
+    }
+
+    try {
+      await updateEmployeePassword({ password: newPassword });
+      const session = await signInEmployee({
+        email: currentUser.email,
+        password: newPassword,
+      });
+      const profile = await fetchEmployeeProfile({
+        userId: session.user?.id,
+        email: session.user?.email || currentUser.email,
+      });
+      const updatedUser = buildUserContext(
+        session.user,
+        profile,
+        lookupEmployeeLabel
+      );
+      setCurrentUser(updatedUser);
+      setChangePasswordSuccess("Your password has been updated.");
+    } catch (error) {
+      setChangePasswordError(
+        error?.message ||
+          "We couldn't update your password. Please try again."
+      );
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -964,6 +1040,10 @@ export default function App() {
     setEditingId(null);
     setForm(createEmptyForm());
     setRecords([]);
+    setChangePasswordOpen(false);
+    setChangePasswordLoading(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
   };
 
   if (!currentUser) {
@@ -984,6 +1064,7 @@ export default function App() {
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
         user={currentUser}
         onLogout={handleLogout}
+        onChangePassword={openChangePasswordDialog}
       />
       <div className="flex flex-1">
         <Sidebar
@@ -1085,6 +1166,14 @@ export default function App() {
           {currentPage === "reports" && <Reports records={records} />}
         </main>
       </div>
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={closeChangePasswordDialog}
+        onSubmit={handleChangePasswordSubmit}
+        loading={changePasswordLoading}
+        error={changePasswordError}
+        successMessage={changePasswordSuccess}
+      />
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title="Delete booking"
