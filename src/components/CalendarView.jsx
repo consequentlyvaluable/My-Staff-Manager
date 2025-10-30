@@ -83,6 +83,10 @@ export default function CalendarView({
           onView={(view) => setCurrentView(view)}
           views={["month", "week", "day", "agenda"]}
           defaultView="month"
+          step={30}
+          timeslots={2}
+          min={new Date(1970, 1, 1, 6, 0)}
+          max={new Date(1970, 1, 1, 22, 0)}
           className="rounded-xl border border-gray-200 bg-white text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
           eventPropGetter={(event) => ({
             style: {
@@ -94,7 +98,9 @@ export default function CalendarView({
           })}
           onEventDrop={allowEventEditing ? onEventDrop : undefined}
           onEventResize={allowEventEditing ? onEventResize : undefined}
-          resizable={allowEventEditing}
+          resizable={
+            allowEventEditing ? { start: true, end: true } : false
+          }
           draggableAccessor={(event) =>
             allowEventEditing && canModifyEmployee(event.employeeLabel)
           }
