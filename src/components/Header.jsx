@@ -126,10 +126,11 @@ function UserMenu({ user, initials, onLogout, onChangePassword }) {
           <button
             type="button"
             onClick={handleChangePassword}
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-purple-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:border-gray-700 dark:text-gray-200 dark:hover:bg-purple-400/40 dark:focus:ring-offset-gray-900"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-purple-200 px-3 py-2 text-sm font-medium text-gray-800 transition-colors duration-200 hover:bg-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:border-gray-700 dark:bg-purple-700 dark:text-white dark:hover:bg-purple-600 dark:focus:ring-offset-gray-900"
           >
             Change password
           </button>
+
 
           <button
             type="button"
