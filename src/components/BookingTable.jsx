@@ -28,6 +28,8 @@ export default function BookingTable({
 }) {
   const [pulsingId, setPulsingId] = useState(null);
   const pulseTimeoutRef = useRef();
+  const [isEmailMenuOpen, setIsEmailMenuOpen] = useState(false);
+  const emailMenuRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -36,6 +38,30 @@ export default function BookingTable({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isEmailMenuOpen) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (emailMenuRef.current && !emailMenuRef.current.contains(event.target)) {
+        setIsEmailMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsEmailMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isEmailMenuOpen]);
 
   const toggleSort = (column) => {
     setSort((prev) => {
@@ -61,23 +87,50 @@ export default function BookingTable({
     startEdit(record);
   };
 
-  const handleSendEmail = () => {
-    const subject = format(new Date(), "MMMM d, yyyy");
-    const bodyContent = records.length
+  const buildEmailDetails = () => {
+    const subject = `Schedule Update – ${format(new Date(), "MMMM d, yyyy")}`;
+    const scheduleSummary = records.length
       ? records
           .map((record, index) => {
             const typeLabel =
               record.type === "Vacation" ? "Vacation" : "Travel";
             const start = formatDateTime(record.start);
             const end = formatDateTime(record.end);
-            return `${index + 1}. ${record.name} — ${typeLabel}\n   Start: ${start}\n   End: ${end}`;
+            return `${index + 1}) ${record.name} – ${typeLabel}\n    • Start: ${start}\n    • End: ${end}`;
           })
           .join("\n\n")
       : "No scheduled records.";
+
+    const body = [
+      "Hello Team,",
+      "",
+      "Here's the latest schedule overview:",
+      "",
+      scheduleSummary,
+      "",
+      "Best regards,",
+      "My Staff Manager",
+    ].join("\n");
+
+    return { subject, body };
+  };
+
+  const handleSendEmail = (destination) => {
+    const { subject, body } = buildEmailDetails();
     const encodedSubject = encodeURIComponent(subject);
-    const encodedBody = encodeURIComponent(`Schedule\n\n${bodyContent}`);
-    const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?subject=${encodedSubject}&body=${encodedBody}`;
-    window.open(outlookUrl, "_blank", "noopener,noreferrer");
+    const encodedBody = encodeURIComponent(body);
+
+    if (destination === "web") {
+      const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?subject=${encodedSubject}&body=${encodedBody}`;
+      window.open(outlookUrl, "_blank", "noopener,noreferrer");
+    }
+
+    if (destination === "desktop") {
+      const mailtoUrl = `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
+      window.location.href = mailtoUrl;
+    }
+
+    setIsEmailMenuOpen(false);
   };
 
   return (
@@ -85,13 +138,40 @@ export default function BookingTable({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Schedule</h2>
-          <button
-            type="button"
-            onClick={handleSendEmail}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow text-sm"
-          >
-            Send Email
-          </button>
+          <div className="relative" ref={emailMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsEmailMenuOpen((prev) => !prev)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow text-sm"
+              aria-haspopup="true"
+              aria-expanded={isEmailMenuOpen}
+            >
+              Send Email
+            </button>
+            {isEmailMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <p className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Choose an option
+                </p>
+                <div className="px-2 py-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmail("web")}
+                    className="w-full rounded-md bg-blue-500 px-3 py-2 text-left text-sm font-medium text-white transition hover:bg-blue-600"
+                  >
+                    Outlook 365 on the Web
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmail("desktop")}
+                    className="w-full rounded-md bg-blue-100 px-3 py-2 text-left text-sm font-medium text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/40"
+                  >
+                    Outlook 365 Desktop
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
