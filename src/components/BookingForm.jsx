@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function BookingForm({
   form,
@@ -14,6 +14,20 @@ export default function BookingForm({
   const employeeInputId = "booking-form-employee";
   const employeeListId = "booking-form-employee-options";
   const [showEditPulse, setShowEditPulse] = useState(false);
+  const [employeeQuery, setEmployeeQuery] = useState(form.name ?? "");
+  const [isEmployeeListOpen, setIsEmployeeListOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const employeeFieldRef = useRef(null);
+
+  const filteredEmployees = useMemo(() => {
+    if (!employeeQuery.trim()) {
+      return employees;
+    }
+
+    return employees.filter((emp) =>
+      emp.toLowerCase().includes(employeeQuery.trim().toLowerCase()),
+    );
+  }, [employeeQuery, employees]);
 
   useEffect(() => {
     if (!editingId) {
@@ -30,6 +44,97 @@ export default function BookingForm({
       clearTimeout(timeout);
     };
   }, [editingId]);
+
+  useEffect(() => {
+    setEmployeeQuery(form.name ?? "");
+  }, [form.name]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!employeeFieldRef.current) {
+        return;
+      }
+
+      if (!employeeFieldRef.current.contains(event.target)) {
+        setIsEmployeeListOpen(false);
+        setHighlightedIndex(-1);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isEmployeeListOpen) {
+      setHighlightedIndex(-1);
+    } else {
+      setHighlightedIndex((prev) => {
+        if (prev >= filteredEmployees.length) {
+          return filteredEmployees.length - 1;
+        }
+        return prev;
+      });
+    }
+  }, [isEmployeeListOpen, filteredEmployees.length]);
+
+  useEffect(() => {
+    if (isDisabled) {
+      setIsEmployeeListOpen(false);
+    }
+  }, [isDisabled]);
+
+  const handleEmployeeSelect = (name) => {
+    setForm({ ...form, name });
+    setEmployeeQuery(name);
+    setIsEmployeeListOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleEmployeeKeyDown = (event) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsEmployeeListOpen(true);
+      setHighlightedIndex((prev) => {
+        if (!filteredEmployees.length) {
+          return -1;
+        }
+
+        const nextIndex = Math.min(prev + 1, filteredEmployees.length - 1);
+        return nextIndex < 0 ? 0 : nextIndex;
+      });
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightedIndex((prev) => {
+        if (!filteredEmployees.length) {
+          return -1;
+        }
+
+        if (!isEmployeeListOpen) {
+          return filteredEmployees.length - 1;
+        }
+
+        const nextIndex = Math.max(prev - 1, -1);
+        return nextIndex === -1 ? filteredEmployees.length - 1 : nextIndex;
+      });
+    }
+
+    if (event.key === "Enter") {
+      if (highlightedIndex >= 0 && filteredEmployees[highlightedIndex]) {
+        event.preventDefault();
+        handleEmployeeSelect(filteredEmployees[highlightedIndex]);
+      }
+    }
+
+    if (event.key === "Escape") {
+      setIsEmployeeListOpen(false);
+    }
+  };
 
   return (
     <div
@@ -80,33 +185,142 @@ export default function BookingForm({
 
       <div className="relative mt-6 space-y-6">
         {/* Employee */}
-        <div className="space-y-2">
+        <div className="space-y-2" ref={employeeFieldRef}>
           <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <label htmlFor={employeeInputId}>Employee</label>
-
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-800/60 dark:text-slate-300">
+              Smart search
+            </span>
           </div>
-          <div className="group relative">
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 dark:text-slate-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12.9 14.32a6.5 6.5 0 1 1 1.414-1.414l3.387 3.387a1 1 0 0 1-1.414 1.414l-3.387-3.387ZM14.5 8a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
             <input
               id={employeeInputId}
-              list={employeeListId}
               type="text"
-              placeholder="Start typing a team member"
-              className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={isEmployeeListOpen}
+              aria-controls={employeeListId}
+              aria-activedescendant={
+                highlightedIndex >= 0
+                  ? `${employeeListId}-option-${highlightedIndex}`
+                  : undefined
+              }
+              placeholder="Search by name"
+              className="w-full rounded-xl border border-slate-200 bg-white/90 py-2.5 pl-9 pr-11 text-sm text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+              value={employeeQuery}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setEmployeeQuery(nextValue);
+                setForm({ ...form, name: nextValue });
+                setIsEmployeeListOpen(true);
+              }}
+              onFocus={() => {
+                if (!isDisabled) {
+                  setIsEmployeeListOpen(true);
+                }
+              }}
+              onClick={() => {
+                if (!isDisabled) {
+                  setIsEmployeeListOpen(true);
+                }
+              }}
+              onKeyDown={handleEmployeeKeyDown}
               disabled={isDisabled}
+              autoComplete="off"
             />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400 transition group-focus-within:text-sky-500 dark:text-slate-500">
-              ▼
-            </span>
-            <datalist id={employeeListId}>
-              {employees.map((emp) => (
-                <option key={emp} value={emp} />
-              ))}
-            </datalist>
+            {form.name && !isDisabled && (
+              <button
+                type="button"
+                className="absolute inset-y-0 right-8 flex items-center text-slate-300 transition hover:text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:text-slate-500 dark:hover:text-slate-300"
+                onClick={() => {
+                  setEmployeeQuery("");
+                  setForm({ ...form, name: "" });
+                  setIsEmployeeListOpen(true);
+                }}
+              >
+                <span className="sr-only">Clear selection</span>
+                ×
+              </button>
+            )}
+            <button
+              type="button"
+              className="absolute inset-y-0 right-2 flex items-center text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:text-slate-500 dark:hover:text-slate-300"
+              onClick={() => {
+                if (isDisabled) {
+                  return;
+                }
+                setIsEmployeeListOpen((prev) => !prev);
+              }}
+              disabled={isDisabled}
+              aria-label={isEmployeeListOpen ? "Hide employee suggestions" : "Show employee suggestions"}
+            >
+              <span aria-hidden="true" className={`transition ${isEmployeeListOpen ? "rotate-180" : ""}`}>
+                ▾
+              </span>
+            </button>
+            {isEmployeeListOpen && !isDisabled && (
+              <div
+                className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-xl shadow-slate-900/10 backdrop-blur-md dark:border-slate-700/70 dark:bg-slate-900/95 dark:shadow-black/40"
+                role="listbox"
+                id={employeeListId}
+              >
+                {filteredEmployees.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                    No team members match "{employeeQuery}".
+                  </p>
+                ) : (
+                  <ul className="max-h-56 overflow-y-auto py-2">
+                    {filteredEmployees.map((employeeName, index) => {
+                      const isHighlighted = index === highlightedIndex;
+                      const isSelected = employeeName === form.name;
+
+                      return (
+                        <li key={employeeName} className="px-2">
+                          <button
+                            type="button"
+                            role="option"
+                            id={`${employeeListId}-option-${index}`}
+                            aria-selected={isSelected}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
+                              isHighlighted
+                                ? "bg-sky-500/10 text-sky-700 dark:bg-sky-500/20 dark:text-sky-100"
+                                : "text-slate-600 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70"
+                            } ${isSelected ? "ring-1 ring-sky-400 dark:ring-sky-500" : ""}`}
+                            onMouseEnter={() => setHighlightedIndex(index)}
+                            onMouseLeave={() => setHighlightedIndex(-1)}
+                            onClick={() => handleEmployeeSelect(employeeName)}
+                          >
+                            <span>{employeeName}</span>
+                            {isSelected && <span className="text-xs text-sky-500 dark:text-sky-300">Selected</span>}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="border-t border-slate-100/80 bg-slate-50/70 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-500">
+                  {filteredEmployees.length} suggestion{filteredEmployees.length === 1 ? "" : "s"}
+                </div>
+              </div>
+            )}
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            You can type to search or select from the menu.
+            Start typing to filter down your team, or open the menu to browse.
           </p>
         </div>
 
