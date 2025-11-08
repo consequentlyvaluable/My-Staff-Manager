@@ -328,6 +328,33 @@ export const updateEmployeePassword = async ({ password }) => {
   await parseResponse(response);
 };
 
+export const requestPasswordReset = async ({ email, redirectTo }) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const trimmedEmail = email?.trim().toLowerCase();
+  if (!trimmedEmail) {
+    throw new Error("Email is required to reset your password.");
+  }
+
+  const payload = { email: trimmedEmail };
+  if (redirectTo) {
+    payload.redirect_to = redirectTo;
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  await parseResponse(response);
+};
+
 const fetchProfileByPath = async (path) => {
   try {
     const data = await request(path);

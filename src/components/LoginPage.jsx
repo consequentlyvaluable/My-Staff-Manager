@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { isSupabaseConfigured, requestPasswordReset } from "../lib/supabaseClient";
 
 export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showResetPopover, setShowResetPopover] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+
+  useEffect(() => {
+    if (showResetPopover) {
+      setResetEmail(email);
+      setResetError("");
+      setResetSuccess("");
+    }
+  }, [showResetPopover, email]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -22,6 +36,50 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
       setError(authError.message || "Unable to sign in. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const closeResetPopover = () => {
+    if (resetSubmitting) return;
+    setShowResetPopover(false);
+    setResetError("");
+    setResetSuccess("");
+  };
+
+  const handleResetSubmit = async (event) => {
+    event.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+
+    if (!resetEmail.trim()) {
+      setResetError("Please enter your email to reset your password.");
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      setResetError(
+        "Supabase is not configured. Please contact your administrator to reset your password."
+      );
+      return;
+    }
+
+    setResetSubmitting(true);
+
+    try {
+      const redirectTo =
+        typeof window !== "undefined" ? window.location.origin : undefined;
+      await requestPasswordReset({ email: resetEmail, redirectTo });
+      setResetSuccess(
+        "If your account exists, you'll receive an email with instructions to change your password."
+      );
+      setResetEmail("");
+    } catch (resetError) {
+      setResetError(
+        resetError?.message ||
+          "We couldn't process your request right now. Please try again later."
+      );
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -94,6 +152,15 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 {error}
               </p>
             )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowResetPopover(true)}
+                className="text-sm font-medium text-purple-600 transition-colors hover:text-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white dark:text-purple-300 dark:hover:text-purple-200 dark:focus:ring-offset-gray-900"
+              >
+                Forgot password?
+              </button>
+            </div>
             <button
               type="submit"
               disabled={submitting}
@@ -104,6 +171,82 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
           </form>
         </div>
       </div>
+      {showResetPopover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            aria-hidden="true"
+            onClick={resetSubmitting ? undefined : closeResetPopover}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Reset your password
+                </h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Enter the email associated with your account and we'll send instructions to change your password.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full p-2 text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:text-gray-300 dark:hover:bg-gray-800"
+                onClick={closeResetPopover}
+                disabled={resetSubmitting}
+                aria-label="Close reset password form"
+              >
+                <span aria-hidden>✕</span>
+              </button>
+            </div>
+            <form onSubmit={handleResetSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="reset-email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                >
+                  Email
+                </label>
+                <input
+                  id="reset-email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(event) => setResetEmail(event.target.value)}
+                  disabled={resetSubmitting}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-800/60"
+                  placeholder="you@example.com"
+                />
+              </div>
+              {resetError && (
+                <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-200">
+                  {resetError}
+                </p>
+              )}
+              {resetSuccess && (
+                <p className="rounded-lg bg-green-50 px-4 py-2 text-sm text-green-700 dark:bg-green-500/20 dark:text-green-200">
+                  {resetSuccess}
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeResetPopover}
+                  disabled={resetSubmitting}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus:ring-offset-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetSubmitting}
+                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow transition-colors duration-200 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-purple-500 dark:hover:bg-purple-400 dark:focus:ring-offset-gray-900"
+                >
+                  {resetSubmitting ? "Sending..." : "Send instructions"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
