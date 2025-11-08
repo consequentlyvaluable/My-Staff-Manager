@@ -1,87 +1,82 @@
-My Staff Manager
+<h1 align="center">Offyse – Staff Manager</h1>
 
-A simple, intuitive web application for managing employee records — built for learning, experimentation, or small-scale use.
+An opinionated React + Tailwind dashboard for scheduling and managing employee activity. Authentication is powered by Supabase and now includes a glam "Forgot password" experience so team members can get back in fast.
 
-🛠️ Features
+## ✨ Features
 
-Add, edit, and remove employees
+- Responsive, dark-mode friendly scheduling dashboard
+- Role-aware employee context sourced from Supabase
+- Gorgeous password reset modal with guided messaging
+- CRUD utilities for booking records with optimistic UI states
 
-Store basic employee details (name, role, contact info, etc.)
+## 🧱 Tech Stack
 
-View a list of all employees
+- [React](https://react.dev/) + [Vite](https://vitejs.dev/) for the SPA shell
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Supabase](https://supabase.com/) Auth + PostgREST for authentication and data
 
-Search/filter employees by name or other attributes
+## 🚀 Getting Started
 
-Client-side validation and user feedback
+1. **Install dependencies**
 
-Clean, responsive UI for desktop & mobile
+   ```bash
+   npm install
+   ```
 
-📦 Tech Stack
+2. **Create an environment file** (`.env.local`) with your Supabase credentials:
 
-Frontend: HTML, CSS, JavaScript (or your chosen framework)
+   ```bash
+   VITE_SUPABASE_URL=your-project-url
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
 
-Backend / API (if any): (mention server, database, or local storage)
+   The app ships with demo credentials for local previews, but you should override them in production.
 
-Deployment: Hosted on Netlify at project-dainty-llama.netlify.app
+3. **Run the dev server**
 
-Tools / libraries: (list React, Vue, Express, Bootstrap, Tailwind, etc. — whatever you used)
+   ```bash
+   npm run dev
+   ```
 
-✅ Why this project?
+4. **Build for production**
 
-Great for practice with CRUD operations
+   ```bash
+   npm run build
+   ```
 
-Helps solidify full-stack development fundamentals
+## 🛠️ Supabase Setup (Auth + Password Reset)
 
-Can be extended or customized as a portfolio piece or basic HR tool
+Follow these steps to provision the Supabase side so the "Forgot password" flow works end-to-end.
 
-Lightweight and easy to host for demos or prototypes
+1. **Create a Supabase project** and note the `Project URL` and `anon` key from *Project Settings → API*.
 
-🔧 Setup & Usage
+2. **Enable email/password auth**
+   - Navigate to *Authentication → Providers*.
+   - Toggle on **Email** and keep "Confirm email" enabled (recommended).
 
-Clone the repository
+3. **Configure URL settings**
+   - Under *Authentication → URL Configuration*, set **Site URL** to your deployed frontend (e.g. `https://offyse.yourdomain.com`).
+   - Add the same URL to **Redirect URLs**. The recovery link Supabase emails will return users here with an access token so the app can complete the reset.
 
-git clone https://github.com/yourusername/employee-manager.git
+4. **Style the password reset email** *(optional but recommended)*
+   - In *Authentication → Email Templates*, customise the **Reset password** template with your branding and include the `{{ .SiteURL }}` link token.
 
+5. **Create supporting tables** if you have not already:
+   - `employee_profiles` with columns such as `id`, `user_id`, `email`, `employee_label`, and any metadata you surface in the UI.
+   - `records` for schedule/booking entries referenced throughout the dashboard.
+   - `Duferco Employees` (or your workforce lookup) with `label` + `sort_order`.
+   - Enable Row-Level Security and create policies that restrict reads/writes to authenticated users as appropriate for your organisation.
 
-Install dependencies
+6. **Grant PostgREST access**
+   - For each table, grant `select/insert/update/delete` to the `authenticated` role where necessary using SQL or the Supabase UI so the anon key can call them from the browser.
 
-npm install
+7. **Test the recovery flow**
+   - Invite or create a user from *Authentication → Users*.
+   - Visit your deployed login page, open **Forgot password**, and submit their email.
+   - Confirm the email arrives, click the link, and verify you land back on your app authenticated and prompted to set a new password by the change-password dialog.
 
+Once these steps are complete, the login screen's new modal will call Supabase's `/auth/v1/recover` endpoint and Supabase will handle the magic-link email for you.
 
-Configure environment (e.g. .env file)
+## 📄 License
 
-Run the development server
-
-npm start
-
-
-Build & deploy
-
-npm run build
-
-
-(If needed) configure backend / database
-
-🚀 Next steps / Roadmap
-
-Some ideas for enhancements:
-
-Authentication & user roles (admin, manager, viewer)
-
-Employee profile photos
-
-Export employee data (CSV, PDF)
-
-Searching & sorting improvements
-
-More robust backend & persistent storage (SQL, NoSQL)
-
-Notifications or reminders (e.g. anniversaries, reviews)
-
-Integration with third-party services (HR tools, Slack, etc.)
-
-
-
-📄 License
-
-This project is licensed under the MIT License (or whatever you prefer).
+MIT

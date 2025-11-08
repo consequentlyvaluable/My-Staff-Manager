@@ -209,6 +209,75 @@ export const restoreSession = async () => {
   }
 };
 
+const createSessionFromAccessToken = async ({
+  accessToken,
+  refreshToken,
+  expiresIn,
+  tokenType,
+}) => {
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const user = await parseResponse(response);
+  if (!user) {
+    throw new Error("Supabase did not return a user for the provided token.");
+  }
+
+  const expiresInNumber = Number(expiresIn);
+  const expiresInSeconds = Number.isFinite(expiresInNumber)
+    ? expiresInNumber
+    : 3600;
+
+  const session = {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    token_type: tokenType || "bearer",
+    expires_in: expiresInSeconds,
+    expires_at: Math.round(Date.now() / 1000 + expiresInSeconds),
+    user,
+  };
+
+  persistSession(session);
+  return session;
+};
+
+export const completeAuthFromHash = async (hashFragment) => {
+  if (!isSupabaseConfigured) return null;
+
+  if (typeof hashFragment === "undefined") {
+    if (typeof window === "undefined") return null;
+    hashFragment = window.location.hash;
+  }
+
+  if (!hashFragment || typeof hashFragment !== "string") {
+    return null;
+  }
+
+  const params = new URLSearchParams(hashFragment.replace(/^#/, ""));
+  const accessToken = params.get("access_token");
+  if (!accessToken) return null;
+
+  const refreshToken = params.get("refresh_token");
+  const expiresIn = params.get("expires_in");
+  const tokenType = params.get("token_type");
+  const eventType = params.get("type") || null;
+
+  const session = await createSessionFromAccessToken({
+    accessToken,
+    refreshToken,
+    expiresIn,
+    tokenType,
+  });
+
+  return { session, eventType };
+};
+
 const authenticateWithPassword = async ({
   email,
   password,
@@ -288,6 +357,33 @@ export const signOutEmployee = async () => {
   }
 
   persistSession(null);
+};
+
+export const requestPasswordReset = async ({ email, redirectTo }) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const trimmedEmail = email?.trim().toLowerCase();
+  if (!trimmedEmail) {
+    throw new Error("Email is required.");
+  }
+
+  const payload = { email: trimmedEmail };
+  if (redirectTo) {
+    payload.redirect_to = redirectTo;
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  await parseResponse(response);
 };
 
 export const updateEmployeePassword = async ({ password }) => {
