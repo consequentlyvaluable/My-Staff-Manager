@@ -1242,6 +1242,9 @@ export default function App() {
           {currentPage === "reports" && <Reports records={records} />}
         </main>
       </div>
+      <footer className="bg-white text-center py-4 text-sm text-gray-600 border-t border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+        Contact: <a href="mailto:support@offyse.com" className="font-medium text-blue-600 dark:text-blue-400">support@offyse.com</a>
+      </footer>
       <ChangePasswordDialog
         open={changePasswordOpen}
         onClose={closeChangePasswordDialog}
