@@ -6,6 +6,16 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const handleForgotPassword = () => {
+    const supportEmail = "support@offyse.com";
+    const subject = encodeURIComponent("Password Reset Request");
+    const body = encodeURIComponent(
+      "Hello Offyse Support,%0D%0A%0D%0AI need help resetting my account password.%0D%0A%0D%0AThank you!"
+    );
+
+    window.open(`mailto:${supportEmail}?subject=${subject}&body=${body}`);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -94,6 +104,13 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 {error}
               </p>
             )}
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="w-full rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm transition hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-white dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-200 dark:hover:bg-purple-900/60 dark:focus:ring-offset-gray-900"
+            >
+              Forgot password?
+            </button>
             <button
               type="submit"
               disabled={submitting}
