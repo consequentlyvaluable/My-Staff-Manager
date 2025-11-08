@@ -38,13 +38,15 @@ export default function Header({
         <button
           type="button"
           onClick={onToggleDarkMode}
-          className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+          className="group flex items-center gap-3 rounded-full border border-white/40 bg-white/70 px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm backdrop-blur transition-all duration-300 hover:border-white/60 hover:bg-white/90 hover:text-gray-900 dark:border-white/10 dark:bg-white/10 dark:text-gray-200 dark:hover:border-white/20 dark:hover:bg-white/15 dark:hover:text-white"
           aria-pressed={darkMode}
         >
-          <span className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${darkMode ? "bg-purple-500" : "bg-gray-300"}`}>
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${darkMode ? "translate-x-5" : "translate-x-1"}`}
-            />
+          <span
+            className={`ios-toggle ${darkMode ? "ios-toggle--dark" : "ios-toggle--light"}`}
+            aria-hidden
+          >
+            <span className="ios-toggle__glow" />
+            <span className="ios-toggle__thumb" />
           </span>
           <span className="hidden sm:inline">{darkMode ? "Dark" : "Light"} Mode</span>
           <span aria-hidden className="sm:hidden">
@@ -66,6 +68,7 @@ export default function Header({
 
 function UserMenu({ user, initials, onLogout, onChangePassword }) {
   const [open, setOpen] = useState(false);
+  const [renderMenu, setRenderMenu] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -83,6 +86,17 @@ function UserMenu({ user, initials, onLogout, onChangePassword }) {
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setRenderMenu(true);
+      return;
+    }
+
+    const timeout = setTimeout(() => setRenderMenu(false), 180);
+
+    return () => clearTimeout(timeout);
   }, [open]);
 
   const toggleMenu = () => setOpen((previous) => !previous);
@@ -117,8 +131,12 @@ function UserMenu({ user, initials, onLogout, onChangePassword }) {
       >
         {initials}
       </button>
-      {open && (
-        <div className="absolute right-0 top-12 z-10 w-56 rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5 transition-colors duration-200 dark:bg-gray-800 dark:text-gray-100 dark:ring-white/10">
+      {renderMenu && (
+        <div
+          className={`absolute right-0 top-12 z-10 w-56 origin-top-right rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5 transition-all duration-200 ease-out dark:bg-gray-800 dark:text-gray-100 dark:ring-white/10 ${open ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-95 opacity-0"}`}
+          role="menu"
+          aria-hidden={!open}
+        >
           <div className="mb-3 border-b border-gray-100 pb-3 dark:border-gray-700">
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>

@@ -153,6 +153,142 @@ a:hover {
   }
 }
 
+.ios-toggle {
+  --toggle-translate-x: 0rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 3.25rem;
+  height: 1.75rem;
+  padding: 0.2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(244, 244, 255, 0.45) 40%,
+      rgba(226, 232, 240, 0.35) 100%
+    ),
+    linear-gradient(135deg, rgba(147, 197, 253, 0.35), rgba(167, 139, 250, 0.6));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.35),
+    0 12px 20px -12px rgba(79, 70, 229, 0.45);
+  overflow: hidden;
+  isolation: isolate;
+  backdrop-filter: blur(14px);
+  transition:
+    background 0.45s ease,
+    border-color 0.45s ease,
+    box-shadow 0.45s ease;
+}
+
+.ios-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.35) 40%,
+    rgba(148, 163, 184, 0.15) 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  transition: opacity 0.45s ease;
+}
+
+.ios-toggle--light {
+  --toggle-translate-x: 0rem;
+}
+
+.ios-toggle--dark {
+  --toggle-translate-x: 1.5rem;
+  border-color: rgba(148, 163, 184, 0.35);
+  background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.75) 0%,
+      rgba(30, 41, 59, 0.65) 55%,
+      rgba(67, 56, 202, 0.6) 100%
+    ),
+    linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(99, 102, 241, 0.55));
+  box-shadow:
+    inset 0 1px 0 rgba(148, 163, 184, 0.35),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.65),
+    0 16px 32px -16px rgba(14, 116, 144, 0.5);
+}
+
+.ios-toggle--dark::before {
+  opacity: 0.45;
+}
+
+.ios-toggle__glow {
+  position: absolute;
+  inset: -40% -30%;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)) 0 0 / 60% 60% no-repeat,
+    radial-gradient(circle at 75% 75%, rgba(129, 140, 248, 0.7), rgba(59, 130, 246, 0)) 0 0 / 90% 90% no-repeat;
+  opacity: 0.75;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.ios-toggle--dark .ios-toggle__glow {
+  opacity: 1;
+}
+
+.ios-toggle__thumb {
+  position: relative;
+  z-index: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.55));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.3),
+    0 10px 16px -10px rgba(79, 70, 229, 0.55);
+  transform: translateX(var(--toggle-translate-x));
+  transition:
+    transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+    background 0.45s ease,
+    box-shadow 0.45s ease;
+  will-change: transform;
+}
+
+.ios-toggle__thumb::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(226, 232, 240, 0.55));
+  box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.2);
+}
+
+.ios-toggle--dark .ios-toggle__thumb {
+  background: linear-gradient(145deg, rgba(226, 232, 240, 0.6), rgba(148, 163, 184, 0.25));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.6),
+    0 14px 18px -12px rgba(14, 116, 144, 0.55);
+}
+
+.ios-toggle--dark .ios-toggle__thumb::before {
+  background: linear-gradient(145deg, rgba(96, 165, 250, 0.65), rgba(129, 140, 248, 0.35));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-toggle,
+  .ios-toggle::before,
+  .ios-toggle__glow,
+  .ios-toggle__thumb {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .edit-booking-pulse {
     animation: none;
