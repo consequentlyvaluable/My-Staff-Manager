@@ -24,6 +24,8 @@ import {
   updateEmployeePassword,
   fetchEmployeeProfile,
   restoreSession,
+  requestPasswordReset,
+  completeAuthFromHash,
 } from "./lib/supabaseClient";
 
 const stripEmployeeLabel = (label) =>
@@ -522,13 +524,73 @@ export default function App() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
+    if (typeof window === "undefined") return;
+
+    let ignore = false;
+
+    const applyHashSession = async () => {
+      if (!window.location.hash) return;
+
+      try {
+        const result = await completeAuthFromHash();
+        if (!result?.session?.user || ignore) return;
+
+        const { user } = result.session;
+        const profile = await fetchEmployeeProfile({
+          userId: user.id,
+          email: user.email,
+        });
+        if (ignore) return;
+
+        const userContext = buildUserContext(
+          user,
+          profile,
+          lookupEmployeeLabel
+        );
+
+        setCurrentUser(userContext);
+        setCurrentPage("dashboard");
+        setSidebarOpen(false);
+        setSearch("");
+        setSort({ name: null, start: null, end: null });
+        setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
+
+        if (result.eventType === "recovery") {
+          setChangePasswordOpen(true);
+          setChangePasswordError("");
+          setChangePasswordSuccess("");
+          setChangePasswordLoading(false);
+        }
+
+        if (window.location.hash) {
+          const { pathname, search } = window.location;
+          window.history.replaceState(
+            null,
+            document.title,
+            `${pathname}${search}`
+          );
+        }
+      } catch (error) {
+        console.warn("Unable to complete Supabase auth from URL", error);
+      }
+    };
+
+    applyHashSession();
+
+    return () => {
+      ignore = true;
+    };
+  }, [lookupEmployeeLabel]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
 
     let ignore = false;
 
     const hydrateUser = async () => {
       try {
         const session = await restoreSession();
-        if (!session?.user) return;
+        if (!session?.user || ignore) return;
         const profile = await fetchEmployeeProfile({
           userId: session.user.id,
           email: session.user.email,
@@ -1025,6 +1087,19 @@ export default function App() {
     return user;
   };
 
+  const handlePasswordReset = async ({ email }) => {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        "Supabase is not configured. Please contact your administrator to enable password recovery."
+      );
+    }
+
+    const redirectTo =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+
+    await requestPasswordReset({ email, redirectTo });
+  };
+
   const handleLogout = async () => {
     try {
       await signOutEmployee();
@@ -1050,6 +1125,7 @@ export default function App() {
     return (
       <LoginPage
         onLogin={handleLogin}
+        onPasswordReset={handlePasswordReset}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
       />

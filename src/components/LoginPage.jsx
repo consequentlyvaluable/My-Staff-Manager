@@ -1,10 +1,20 @@
 import { useState } from "react";
 
-export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
+export default function LoginPage({
+  onLogin,
+  onPasswordReset,
+  darkMode,
+  onToggleDarkMode,
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -22,6 +32,50 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
       setError(authError.message || "Unable to sign in. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openResetDialog = () => {
+    setResetEmail(email);
+    setResetError("");
+    setResetSuccess("");
+    setResetOpen(true);
+  };
+
+  const closeResetDialog = () => {
+    setResetOpen(false);
+    setResetSubmitting(false);
+  };
+
+  const handleResetSubmit = async (event) => {
+    event.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+
+    const trimmedEmail = resetEmail.trim();
+    if (!trimmedEmail) {
+      setResetError("Enter the email you use to sign in.");
+      return;
+    }
+
+    if (typeof onPasswordReset !== "function") {
+      setResetError("Password recovery is currently unavailable.");
+      return;
+    }
+
+    setResetSubmitting(true);
+    try {
+      await onPasswordReset({ email: trimmedEmail });
+      setResetSuccess(
+        "Check your inbox for a reset link. It expires in 1 hour."
+      );
+    } catch (resetProblem) {
+      setResetError(
+        resetProblem.message ||
+          "We couldn't start the reset flow. Please try again."
+      );
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -94,6 +148,15 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
                 {error}
               </p>
             )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={openResetDialog}
+                className="text-sm font-semibold text-purple-600 transition hover:text-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-purple-300 dark:hover:text-purple-200 dark:focus-visible:ring-offset-gray-900"
+              >
+                Forgot password?
+              </button>
+            </div>
             <button
               type="submit"
               disabled={submitting}
@@ -104,6 +167,77 @@ export default function LoginPage({ onLogin, darkMode, onToggleDarkMode }) {
           </form>
         </div>
       </div>
+      {resetOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          onClick={closeResetDialog}
+        >
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 via-fuchsia-500 to-rose-500 p-[2px] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="relative rounded-[1.5rem] bg-white/95 p-8 text-gray-800 shadow-xl dark:bg-gray-900/95 dark:text-gray-100">
+              <button
+                type="button"
+                onClick={closeResetDialog}
+                className="absolute right-4 top-4 rounded-full bg-white/80 p-2 text-gray-500 shadow-sm transition hover:scale-105 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:text-white"
+                aria-label="Close password reset dialog"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+              <div className="mb-6 text-center">
+                <p className="inline-flex rounded-full bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-purple-600 shadow-sm dark:bg-gray-800/70 dark:text-purple-300">
+                  Reset Access
+                </p>
+                <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
+                  Let's get you back in
+                </h3>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  Enter your work email and we'll send a shimmering reset link.
+                </p>
+              </div>
+              <form onSubmit={handleResetSubmit} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="reset-email"
+                    className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
+                  >
+                    Work email
+                  </label>
+                  <input
+                    id="reset-email"
+                    name="reset-email"
+                    type="email"
+                    autoComplete="email"
+                    value={resetEmail}
+                    onChange={(event) => setResetEmail(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/50 bg-white/80 px-4 py-2 text-gray-900 shadow-inner shadow-purple-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-100"
+                    placeholder="you@company.com"
+                  />
+                </div>
+                {resetError && (
+                  <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700 shadow-inner dark:bg-rose-500/20 dark:text-rose-100">
+                    {resetError}
+                  </p>
+                )}
+                {resetSuccess && (
+                  <p className="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700 shadow-inner dark:bg-emerald-500/20 dark:text-emerald-100">
+                    {resetSuccess}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={resetSubmitting}
+                  className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"
+                >
+                  <span className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-30" />
+                  {resetSubmitting ? "Sending magic..." : "Send reset link"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
