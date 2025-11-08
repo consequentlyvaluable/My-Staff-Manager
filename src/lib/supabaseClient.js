@@ -355,6 +355,76 @@ export const requestPasswordReset = async ({ email, redirectTo }) => {
   await parseResponse(response);
 };
 
+const fetchUserWithAccessToken = async (accessToken) => {
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return parseResponse(response);
+};
+
+const parseRecoveryHash = (hash) => {
+  if (!hash) return null;
+
+  const trimmed = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!trimmed) return null;
+
+  const params = new URLSearchParams(trimmed);
+  const type = params.get("type");
+  if (type !== "recovery") return null;
+
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  const expiresInParam = params.get("expires_in");
+  const tokenType = params.get("token_type") || "bearer";
+
+  if (!accessToken || !refreshToken) {
+    throw new Error("This password reset link is missing required credentials.");
+  }
+
+  const expiresIn = Number.parseInt(expiresInParam, 10);
+
+  return {
+    accessToken,
+    refreshToken,
+    tokenType,
+    expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 3600,
+  };
+};
+
+export const establishRecoverySessionFromHash = async (hash) => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const parsed = parseRecoveryHash(hash);
+  if (!parsed) return null;
+
+  const user = await fetchUserWithAccessToken(parsed.accessToken);
+  if (!user) {
+    throw new Error("We couldn't validate your password reset link. Please request a new one.");
+  }
+
+  const expiresAtSeconds = Math.round(Date.now() / 1000) + parsed.expiresIn;
+
+  const session = {
+    access_token: parsed.accessToken,
+    refresh_token: parsed.refreshToken,
+    token_type: parsed.tokenType,
+    expires_in: parsed.expiresIn,
+    expires_at: expiresAtSeconds,
+    user,
+  };
+
+  persistSession(session);
+  return session;
+};
+
 const fetchProfileByPath = async (path) => {
   try {
     const data = await request(path);
