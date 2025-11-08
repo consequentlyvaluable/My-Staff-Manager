@@ -61,10 +61,38 @@ export default function BookingTable({
     startEdit(record);
   };
 
+  const handleSendEmail = () => {
+    const subject = format(new Date(), "MMMM d, yyyy");
+    const bodyContent = records.length
+      ? records
+          .map((record, index) => {
+            const typeLabel =
+              record.type === "Vacation" ? "Vacation" : "Travel";
+            const start = formatDateTime(record.start);
+            const end = formatDateTime(record.end);
+            return `${index + 1}. ${record.name} — ${typeLabel}\n   Start: ${start}\n   End: ${end}`;
+          })
+          .join("\n\n")
+      : "No scheduled records.";
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedBody = encodeURIComponent(`Schedule\n\n${bodyContent}`);
+    const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?subject=${encodedSubject}&body=${encodedBody}`;
+    window.open(outlookUrl, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="bg-white p-6 rounded-2xl shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Schedule</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Schedule</h2>
+          <button
+            type="button"
+            onClick={handleSendEmail}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow text-sm"
+          >
+            Send Email
+          </button>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="text"
