@@ -26,6 +26,13 @@ const supabaseAuthClient = isSupabaseConfigured
     })
   : null;
 
+const BOOKING_NOTIFICATION_CHANNEL = "booking_notifications";
+const BOOKING_NOTIFICATION_EVENT = "booking_notification";
+
+let bookingNotificationChannel = null;
+let bookingChannelPromise = null;
+let isBookingChannelJoined = false;
+
 const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
 
 const baseHeaders = isSupabaseConfigured
@@ -206,6 +213,139 @@ const request = async (path, { method = "GET", body, headers = {} } = {}) => {
   }
 
   return parseResponse(response);
+};
+
+const resetBookingNotificationChannel = () => {
+  bookingNotificationChannel = null;
+  bookingChannelPromise = null;
+  isBookingChannelJoined = false;
+};
+
+const ensureBookingNotificationChannel = () => {
+  if (!isSupabaseConfigured) return null;
+  if (!supabaseAuthClient) return null;
+
+  if (
+    bookingNotificationChannel &&
+    bookingNotificationChannel.state &&
+    bookingNotificationChannel.state !== "closed" &&
+    bookingNotificationChannel.state !== "errored"
+  ) {
+    return bookingNotificationChannel;
+  }
+
+  bookingNotificationChannel = supabaseAuthClient.channel(
+    BOOKING_NOTIFICATION_CHANNEL,
+    {
+      config: {
+        broadcast: { ack: true },
+      },
+    }
+  );
+  bookingChannelPromise = null;
+  isBookingChannelJoined = false;
+  return bookingNotificationChannel;
+};
+
+const ensureBookingChannelSubscribed = async () => {
+  const channel = ensureBookingNotificationChannel();
+  if (!channel) return null;
+
+  if (isBookingChannelJoined) {
+    return channel;
+  }
+
+  if (!bookingChannelPromise) {
+    bookingChannelPromise = channel
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          isBookingChannelJoined = true;
+          return;
+        }
+        if (status === "CLOSED" || status === "TIMED_OUT") {
+          resetBookingNotificationChannel();
+        }
+        if (status === "CHANNEL_ERROR") {
+          resetBookingNotificationChannel();
+        }
+      })
+      .catch((error) => {
+        console.warn(
+          "Failed to subscribe to booking notification channel",
+          error
+        );
+        resetBookingNotificationChannel();
+        throw error;
+      });
+  }
+
+  try {
+    await bookingChannelPromise;
+    return ensureBookingNotificationChannel();
+  } catch (error) {
+    console.warn("Booking notification channel subscription failed", error);
+    return null;
+  }
+};
+
+export const subscribeToBookingNotifications = async (handler) => {
+  if (typeof handler !== "function") {
+    return () => {};
+  }
+
+  const channel = ensureBookingNotificationChannel();
+  if (!channel) {
+    return () => {};
+  }
+
+  channel.on("broadcast", { event: BOOKING_NOTIFICATION_EVENT }, (payload) => {
+    try {
+      handler(payload?.payload ?? null);
+    } catch (error) {
+      console.warn("Booking notification handler threw an error", error);
+    }
+  });
+
+  const subscribedChannel = await ensureBookingChannelSubscribed();
+  if (!subscribedChannel) {
+    return () => {};
+  }
+
+  let active = true;
+
+  return async () => {
+    if (!active) return;
+    active = false;
+    try {
+      await subscribedChannel.unsubscribe();
+    } catch (error) {
+      console.warn(
+        "Failed to unsubscribe from booking notifications channel",
+        error
+      );
+    } finally {
+      if (bookingNotificationChannel === subscribedChannel) {
+        resetBookingNotificationChannel();
+      }
+    }
+  };
+};
+
+export const broadcastBookingNotification = async (payload) => {
+  if (!payload) return null;
+  const channel = await ensureBookingChannelSubscribed();
+  if (!channel) return null;
+
+  try {
+    return await channel.send({
+      type: "broadcast",
+      event: BOOKING_NOTIFICATION_EVENT,
+      payload,
+    });
+  } catch (error) {
+    console.warn("Failed to broadcast booking notification", error);
+    throw error;
+  }
 };
 
 export const getActiveSession = () => getStoredSession();

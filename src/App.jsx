@@ -9,6 +9,7 @@ import Reports from "./components/Reports";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
+import ToastStack from "./components/ToastStack";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -26,6 +27,8 @@ import {
   restoreSession,
   requestPasswordReset,
   completeAuthFromHash,
+  subscribeToBookingNotifications,
+  broadcastBookingNotification,
 } from "./lib/supabaseClient";
 
 const stripEmployeeLabel = (label) =>
@@ -299,6 +302,14 @@ const formatBookingRange = (start, end) => {
   return `${formattedStart} → ${formattedEnd}`;
 };
 
+const createUniqueId = (prefix = "id") => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const random = Math.random().toString(36).slice(2);
+  return `${prefix}-${random}-${Date.now()}`;
+};
+
 function createEmptyForm(name = "") {
   return {
     name,
@@ -344,6 +355,9 @@ export default function App() {
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState("");
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
+  const [toasts, setToasts] = useState([]);
+
+  const clientInstanceId = useMemo(() => createUniqueId("client"), []);
 
   const canManageAll = currentUser?.permissions?.canManageAll ?? true;
   const canEditTeam = currentUser?.permissions?.canEditTeam ?? canManageAll;
@@ -409,6 +423,114 @@ export default function App() {
       return canModifyEmployee(record.name);
     },
     [canModifyEmployee]
+  );
+
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const showToastForEvent = useCallback(
+    (event) => {
+      if (!event?.booking) return;
+
+      const normalizedAction =
+        event.action === "deleted"
+          ? "deleted"
+          : event.action === "updated"
+          ? "updated"
+          : "created";
+
+      const actionVerb =
+        normalizedAction === "created"
+          ? "added"
+          : normalizedAction === "deleted"
+          ? "deleted"
+          : "edited";
+
+      const actorEmail =
+        typeof event.actor?.email === "string" ? event.actor.email : "";
+      const actorName =
+        (typeof event.actor?.name === "string" && event.actor.name.trim()) ||
+        fallbackNameFromEmail(actorEmail);
+
+      const bookingName =
+        (typeof event.booking?.name === "string" &&
+          event.booking.name.trim()) ||
+        "an employee";
+      const bookingType =
+        event.booking?.type === "Travel" ? "✈️ Travel" : "🌴 Vacation";
+      const range = formatBookingRange(
+        event.booking?.start,
+        event.booking?.end
+      );
+      const meta = range && range !== "-" ? range : null;
+
+      const toast = {
+        id: createUniqueId("toast"),
+        action: normalizedAction,
+        title: `${actorName} ${actionVerb} a booking`,
+        description: `Booking for ${bookingName} · ${bookingType}`,
+        meta,
+      };
+
+      setToasts((prev) => {
+        const next = [...prev, toast];
+        if (next.length > 5) {
+          next.shift();
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const notifyBookingEvent = useCallback(
+    async ({ action, booking }) => {
+      if (!booking) return;
+
+      const payload = {
+        action:
+          action === "deleted"
+            ? "deleted"
+            : action === "updated"
+            ? "updated"
+            : "created",
+        booking: {
+          id: booking.id ?? null,
+          name: booking.name ?? "",
+          type: booking.type ?? "Vacation",
+          start: booking.start ?? "",
+          end: booking.end ?? "",
+        },
+        actor: {
+          id: currentUser?.id ?? null,
+          name: currentUser?.name ?? "",
+          email: currentUser?.email ?? "",
+        },
+        clientId: clientInstanceId,
+        timestamp: new Date().toISOString(),
+      };
+
+      showToastForEvent(payload);
+
+      if (!isSupabaseConfigured) return;
+
+      try {
+        await broadcastBookingNotification(payload);
+      } catch (error) {
+        console.warn("Unable to broadcast booking notification", error);
+      }
+    },
+    [currentUser, clientInstanceId, showToastForEvent]
+  );
+
+  const handleIncomingNotification = useCallback(
+    (event) => {
+      if (!event) return;
+      if (event.clientId && event.clientId === clientInstanceId) return;
+      showToastForEvent(event);
+    },
+    [clientInstanceId, showToastForEvent]
   );
 
   const canClearAllRecords = canManageAll && !isReadOnly;
@@ -737,6 +859,41 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    if (!currentUser) return undefined;
+
+    let isActive = true;
+    let unsubscribe = null;
+
+    const subscribeToNotifications = async () => {
+      try {
+        const cleanup = await subscribeToBookingNotifications((event) => {
+          if (!isActive) return;
+          handleIncomingNotification(event);
+        });
+        if (!isActive) {
+          if (cleanup) {
+            cleanup();
+          }
+          return;
+        }
+        unsubscribe = cleanup;
+      } catch (error) {
+        console.warn("Failed to subscribe to booking notifications", error);
+      }
+    };
+
+    subscribeToNotifications();
+
+    return () => {
+      isActive = false;
+      if (unsubscribe) {
+        void unsubscribe();
+      }
+    };
+  }, [currentUser, handleIncomingNotification]);
+
+  useEffect(() => {
     if (editingId) return;
     setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   }, [currentUser, editingId]);
@@ -844,17 +1001,22 @@ export default function App() {
       const nextEndIso = nextEnd.toISOString();
 
       let previousEvent = null;
+      let notificationRecord = { ...target, start: nextStartIso, end: nextEndIso };
       setRecords((prev) =>
         prev.map((rec) => {
           if (rec.id !== event.id) return rec;
           previousEvent = { ...rec };
-          return {
+          const nextValue = {
             ...rec,
             start: nextStartIso,
             end: nextEndIso,
           };
+          notificationRecord = nextValue;
+          return nextValue;
         })
       );
+
+      let updateFailed = false;
 
       try {
         const updated = await updateRecord(event.id, {
@@ -863,20 +1025,20 @@ export default function App() {
         });
 
         if (updated) {
+          notificationRecord = {
+            ...notificationRecord,
+            ...updated,
+            start: updated.start ?? nextStartIso,
+            end: updated.end ?? nextEndIso,
+          };
           setRecords((prev) =>
             prev.map((rec) =>
-              rec.id === event.id
-                ? {
-                    ...rec,
-                    ...updated,
-                    start: updated.start ?? nextStartIso,
-                    end: updated.end ?? nextEndIso,
-                  }
-                : rec
+              rec.id === event.id ? notificationRecord : rec
             )
           );
         }
       } catch (error) {
+        updateFailed = true;
         console.error(
           "Failed to update record from calendar interaction",
           error
@@ -888,8 +1050,15 @@ export default function App() {
           );
         }
       }
+
+      if (!updateFailed) {
+        await notifyBookingEvent({
+          action: "updated",
+          booking: notificationRecord,
+        });
+      }
     },
-    [records, canEditRecord]
+    [records, canEditRecord, notifyBookingEvent]
   );
 
   const handleCalendarEventDrop = useCallback(
@@ -960,32 +1129,43 @@ export default function App() {
       };
 
       if (editingId) {
+        let notificationRecord = { id: editingId, ...payload };
         const updated = await updateRecord(editingId, payload);
         setRecords((prev) =>
           prev.map((rec) => {
             if (rec.id !== editingId) return rec;
-            if (!updated) {
-              return { ...rec, ...payload };
-            }
-            return {
-              ...rec,
-              ...updated,
-              start: updated.start ?? payload.start,
-              end: updated.end ?? payload.end,
-            };
+            const nextValue = updated
+              ? {
+                  ...rec,
+                  ...updated,
+                  start: updated.start ?? payload.start,
+                  end: updated.end ?? payload.end,
+                }
+              : { ...rec, ...payload };
+            notificationRecord = nextValue;
+            return nextValue;
           })
         );
         setEditingId(null);
+        await notifyBookingEvent({
+          action: "updated",
+          booking: notificationRecord,
+        });
       } else {
         const created = await createRecord(payload);
+        let recordWithFallback = { ...payload };
         if (created) {
-          const recordWithFallback = {
+          recordWithFallback = {
             ...created,
             start: created.start ?? payload.start,
             end: created.end ?? payload.end,
           };
           setRecords((prev) => [...prev, recordWithFallback]);
         }
+        await notifyBookingEvent({
+          action: "created",
+          booking: recordWithFallback,
+        });
       }
       setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
     } catch (err) {
@@ -1045,21 +1225,27 @@ export default function App() {
 
     try {
       const updated = await updateRecord(recordId, payload);
+      let notificationRecord = {
+        ...target,
+        ...payload,
+        id: recordId,
+      };
       setRecords((prev) =>
         prev.map((rec) => {
           if (rec.id !== recordId) return rec;
-          if (!updated) {
-            return {
-              ...rec,
-              ...payload,
-            };
-          }
-          return {
-            ...rec,
-            ...updated,
-            start: updated.start ?? payload.start,
-            end: updated.end ?? payload.end,
-          };
+          const nextValue = updated
+            ? {
+                ...rec,
+                ...updated,
+                start: updated.start ?? payload.start,
+                end: updated.end ?? payload.end,
+              }
+            : {
+                ...rec,
+                ...payload,
+              };
+          notificationRecord = nextValue;
+          return nextValue;
         })
       );
 
@@ -1067,6 +1253,11 @@ export default function App() {
         setEditingId(null);
         setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
       }
+
+      await notifyBookingEvent({
+        action: "updated",
+        booking: notificationRecord,
+      });
 
       return { success: true };
     } catch (error) {
@@ -1114,10 +1305,16 @@ export default function App() {
     setIsDeleting(true);
     setDeleteError("");
 
+    const recordToDelete = pendingDelete;
+
     try {
-      await removeRecord(pendingDelete.id);
-      setRecords((prev) => prev.filter((r) => r.id !== pendingDelete.id));
-      if (editingId === pendingDelete.id) cancelEdit();
+      await removeRecord(recordToDelete.id);
+      setRecords((prev) => prev.filter((r) => r.id !== recordToDelete.id));
+      if (editingId === recordToDelete.id) cancelEdit();
+      await notifyBookingEvent({
+        action: "deleted",
+        booking: recordToDelete,
+      });
       setPendingDelete(null);
     } catch (error) {
       console.error("Failed to delete record", error);
@@ -1258,6 +1455,7 @@ export default function App() {
     setEditingId(null);
     setForm(createEmptyForm());
     setRecords([]);
+    setToasts([]);
     setChangePasswordOpen(false);
     setChangePasswordLoading(false);
     setChangePasswordError("");
@@ -1266,12 +1464,15 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <LoginPage
-        onLogin={handleLogin}
-        onPasswordReset={handlePasswordReset}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
-      />
+      <>
+        <LoginPage
+          onLogin={handleLogin}
+          onPasswordReset={handlePasswordReset}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        />
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
+      </>
     );
   }
 
@@ -1476,6 +1677,7 @@ export default function App() {
           </div>
         )}
       </ConfirmDialog>
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
