@@ -228,6 +228,9 @@ const clearSupabaseAuthParamsFromUrl = () => {
     "token_hash",
     "email",
     "email_address",
+    "error",
+    "error_code",
+    "error_description",
   ];
 
   const { pathname, search, hash } = window.location;
@@ -580,7 +583,19 @@ export default function App() {
 
       try {
         const result = await completeAuthFromHash(hash, search);
-        if (!result?.session?.user || ignore) return;
+        if (ignore) return;
+
+        if (result?.error) {
+          const description =
+            result.error.description ||
+            result.error.message ||
+            "We couldn't verify that sign-in link. Please request a new one.";
+          setErrorMessage(description);
+          clearSupabaseAuthParamsFromUrl();
+          return;
+        }
+
+        if (!result?.session?.user) return;
 
         const { user } = result.session;
         const profile = await fetchEmployeeProfile({
