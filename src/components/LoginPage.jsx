@@ -105,6 +105,14 @@ export default function LoginPage({
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Sign in with your employee account to access the dashboard.
             </p>
+            <p className="mt-3 text-sm">
+              <a
+                href="https://landing.offyse.com"
+                className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-300 dark:hover:text-purple-200"
+              >
+                New to Offyse? Learn more about this tool
+              </a>
+            </p>
             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
               Contact: <a href="mailto:support@offyse.com" className="font-semibold text-purple-600 hover:text-purple-500 dark:text-purple-300 dark:hover:text-purple-200">support@offyse.com</a>
             </p>
