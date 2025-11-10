@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 const DEFAULT_SUPABASE_URL = "https://qbjsccnnkwbrytywvruw.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFianNjY25ua3dicnl0eXd2cnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDI5OTMsImV4cCI6MjA3NjI3ODk5M30.J4qLO8w4kkO1V2B0PibVhWuOBROxsUzLcCUPMhvwFXU";
@@ -13,6 +15,16 @@ const supabaseAnonKey = hasEnvSupabaseConfig
   : DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+const supabaseAuthClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        detectSessionInUrl: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
 
 const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
 
@@ -247,32 +259,146 @@ const createSessionFromAccessToken = async ({
   return session;
 };
 
-export const completeAuthFromHash = async (hashFragment) => {
+const createSearchParams = (value) => {
+  if (!value) return null;
+
+  if (value instanceof URLSearchParams) {
+    return value;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const normalized = trimmed.replace(/^[?#]/, "");
+  if (!normalized) return null;
+
+  return new URLSearchParams(normalized);
+};
+
+const mergeSearchParams = (...sources) => {
+  const merged = new URLSearchParams();
+
+  for (const source of sources) {
+    const params = createSearchParams(source);
+    if (!params) continue;
+
+    for (const [key, value] of params.entries()) {
+      if (!merged.has(key)) {
+        merged.set(key, value);
+      }
+    }
+  }
+
+  return merged;
+};
+
+const extractFirstSessionLike = (value) => {
+  if (!value || typeof value !== "object") return null;
+  if (value.access_token) return value;
+  if (value.session && typeof value.session === "object") {
+    return extractFirstSessionLike(value.session);
+  }
+  if (value.data && typeof value.data === "object") {
+    return extractFirstSessionLike(value.data);
+  }
+  return null;
+};
+
+const verifyOtpToken = async ({ token, type, email }) => {
+  if (!token) {
+    throw new Error("A Supabase OTP token is required to complete verification.");
+  }
+
+  if (!supabaseAuthClient) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const verificationType = type || "magiclink";
+
+  const payload = email
+    ? { email, token, type: verificationType }
+    : { token_hash: token, type: verificationType };
+
+  const { data, error } = await supabaseAuthClient.auth.verifyOtp(payload);
+  if (error) {
+    throw new Error(error.message || "Supabase rejected the provided token.");
+  }
+
+  const sessionLike = extractFirstSessionLike(data) || data?.session || null;
+  if (!sessionLike?.access_token) {
+    throw new Error("Supabase did not return an access token for the provided token.");
+  }
+
+  const session = {
+    ...sessionLike,
+    user: sessionLike.user || data?.user || null,
+  };
+
+  if (!session.user) {
+    return createSessionFromAccessToken({
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresIn: session.expires_in,
+      tokenType: session.token_type,
+    });
+  }
+
+  if (!session.expires_at && session.expires_in) {
+    const expiresInNumber = Number(session.expires_in);
+    if (Number.isFinite(expiresInNumber)) {
+      session.expires_at = Math.round(Date.now() / 1000 + expiresInNumber);
+    }
+  }
+
+  persistSession(session);
+  return session;
+};
+
+export const completeAuthFromHash = async (hashFragment, searchQuery) => {
   if (!isSupabaseConfigured) return null;
 
-  if (typeof hashFragment === "undefined") {
+  if (
+    typeof hashFragment === "undefined" ||
+    typeof searchQuery === "undefined"
+  ) {
     if (typeof window === "undefined") return null;
-    hashFragment = window.location.hash;
+    if (typeof hashFragment === "undefined") {
+      hashFragment = window.location.hash;
+    }
+    if (typeof searchQuery === "undefined") {
+      searchQuery = window.location.search;
+    }
   }
 
-  if (!hashFragment || typeof hashFragment !== "string") {
-    return null;
-  }
-
-  const params = new URLSearchParams(hashFragment.replace(/^#/, ""));
-  const accessToken = params.get("access_token");
-  if (!accessToken) return null;
-
-  const refreshToken = params.get("refresh_token");
-  const expiresIn = params.get("expires_in");
-  const tokenType = params.get("token_type");
+  const params = mergeSearchParams(hashFragment, searchQuery);
   const eventType = params.get("type") || null;
 
-  const session = await createSessionFromAccessToken({
-    accessToken,
-    refreshToken,
-    expiresIn,
-    tokenType,
+  const accessToken = params.get("access_token");
+  if (accessToken) {
+    const refreshToken = params.get("refresh_token");
+    const expiresIn = params.get("expires_in");
+    const tokenType = params.get("token_type");
+
+    const session = await createSessionFromAccessToken({
+      accessToken,
+      refreshToken,
+      expiresIn,
+      tokenType,
+    });
+
+    return { session, eventType };
+  }
+
+  const otpToken = params.get("token") || params.get("token_hash");
+  if (!otpToken) return null;
+
+  const email = params.get("email") || params.get("email_address");
+  const session = await verifyOtpToken({
+    token: otpToken,
+    type: eventType,
+    email,
   });
 
   return { session, eventType };
@@ -369,21 +495,20 @@ export const requestPasswordReset = async ({ email, redirectTo }) => {
     throw new Error("Email is required.");
   }
 
-  const payload = { email: trimmedEmail };
-  if (redirectTo) {
-    payload.redirect_to = redirectTo;
+  if (!supabaseAuthClient) {
+    throw new Error("Supabase environment variables are not configured.");
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...baseHeaders,
-    },
-    body: JSON.stringify(payload),
-  });
+  const { error } = await supabaseAuthClient.auth.resetPasswordForEmail(
+    trimmedEmail,
+    {
+      redirectTo,
+    }
+  );
 
-  await parseResponse(response);
+  if (error) {
+    throw new Error(error.message || "Supabase could not send the reset email.");
+  }
 };
 
 export const updateEmployeePassword = async ({ password }) => {
