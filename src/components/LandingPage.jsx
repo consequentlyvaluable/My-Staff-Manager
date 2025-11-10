@@ -127,7 +127,7 @@ const pricingPlans = [
     ],
     cta: {
       label: "Start free trial",
-      href: "https://app.offyse.com/signup",
+      href: "mailto:hello@offyse.com",
     },
     highlighted: false,
   },
@@ -256,7 +256,7 @@ export default function LandingPage() {
           </div>
           <div className="hidden items-center gap-3 md:flex">
             <a
-              href="https://app.offyse.com/login"
+              href="https://offyse.com"
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 isDarkMode
                   ? "border-slate-500/60 text-slate-200 hover:border-indigo-400 hover:text-white"
@@ -266,7 +266,7 @@ export default function LandingPage() {
               Sign in
             </a>
             <a
-              href="https://app.offyse.com/signup"
+              href="mailto:hello@offyse.com"
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 isDarkMode
                   ? "bg-indigo-500 text-white hover:bg-indigo-400"
@@ -575,7 +575,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <a
-                href="https://app.offyse.com/signup"
+                href="mailto:hello@offyse.com"
                 className={`inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition ${
                   isDarkMode
                     ? "bg-indigo-500 text-white hover:bg-indigo-400"
