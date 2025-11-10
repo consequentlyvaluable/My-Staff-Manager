@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { handleLandingNavigation } from "../lib/landingNavigation";
 
 const legalContent = {
   privacy: {
@@ -159,7 +160,11 @@ export default function LandingLegalPage({ variant = "privacy" }) {
           />
         </div>
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6 md:px-8">
-          <a href="/landing" className="flex items-center gap-3 text-lg font-semibold">
+          <a
+            href="/landing"
+            onClick={(event) => handleLandingNavigation(event, "/landing")}
+            className="flex items-center gap-3 text-lg font-semibold"
+          >
             <span
               className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-xl font-bold transition-colors ${
                 isDarkMode ? "bg-indigo-500/20 text-indigo-300" : "bg-indigo-500/10 text-indigo-600"
@@ -245,6 +250,7 @@ export default function LandingLegalPage({ variant = "privacy" }) {
           <div className="flex flex-wrap items-center gap-4">
             <a
               href="/landing"
+              onClick={(event) => handleLandingNavigation(event, "/landing")}
               className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300"
             >
               Back to overview
@@ -252,13 +258,22 @@ export default function LandingLegalPage({ variant = "privacy" }) {
             {variant !== "privacy" && (
               <a
                 href="/landing/privacy"
+                onClick={(event) =>
+                  handleLandingNavigation(event, "/landing/privacy")
+                }
                 className="hover:text-slate-700 dark:hover:text-white"
               >
                 Privacy
               </a>
             )}
             {variant !== "terms" && (
-              <a href="/landing/terms" className="hover:text-slate-700 dark:hover:text-white">
+              <a
+                href="/landing/terms"
+                onClick={(event) =>
+                  handleLandingNavigation(event, "/landing/terms")
+                }
+                className="hover:text-slate-700 dark:hover:text-white"
+              >
                 Terms
               </a>
             )}

@@ -2142,7 +2142,22 @@ export default function App() {
   const [landingState, setLandingState] = useState(() => resolveLandingRoute());
 
   useEffect(() => {
-    setLandingState(resolveLandingRoute());
+    if (typeof window === "undefined") {
+      setLandingState(resolveLandingRoute());
+      return;
+    }
+
+    const handleLocationChange = () => {
+      setLandingState(resolveLandingRoute());
+    };
+
+    handleLocationChange();
+
+    window.addEventListener("popstate", handleLocationChange);
+
+    return () => {
+      window.removeEventListener("popstate", handleLocationChange);
+    };
   }, []);
 
   if (landingState.renderLanding) {
