@@ -248,13 +248,7 @@ const createSessionFromAccessToken = async ({
 };
 
 const createSearchParams = (value) => {
-  if (!value) return null;
-
-  if (value instanceof URLSearchParams) {
-    return value;
-  }
-
-  if (typeof value !== "string") return null;
+  if (!value || typeof value !== "string") return null;
 
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -265,22 +259,31 @@ const createSearchParams = (value) => {
   return new URLSearchParams(normalized);
 };
 
-const mergeSearchParams = (...sources) => {
-  const merged = new URLSearchParams();
+export const completeAuthFromHash = async (hashFragment, searchQuery) => {
+  if (!isSupabaseConfigured) return null;
 
-  for (const source of sources) {
-    const params = createSearchParams(source);
-    if (!params) continue;
-
-    for (const [key, value] of params.entries()) {
-      if (!merged.has(key)) {
-        merged.set(key, value);
-      }
+  if (
+    typeof hashFragment === "undefined" ||
+    typeof searchQuery === "undefined"
+  ) {
+    if (typeof window === "undefined") return null;
+    if (typeof hashFragment === "undefined") {
+      hashFragment = window.location.hash;
+    }
+    if (typeof searchQuery === "undefined") {
+      searchQuery = window.location.search;
     }
   }
 
-  return merged;
-};
+  let params = createSearchParams(hashFragment);
+  let accessToken = params?.get("access_token");
+
+  if (!accessToken) {
+    params = createSearchParams(searchQuery);
+    accessToken = params?.get("access_token");
+  }
+
+  if (!accessToken) return null;
 
 const extractFirstSessionLike = (value) => {
   if (!value || typeof value !== "object") return null;
