@@ -834,7 +834,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a
-                href="https://app.offyse.com/signup"
+                href="mailto:hello@offyse.com"
                 className={`inline-flex items-center justify-center rounded-full px-8 py-3 text-base font-semibold transition ${
                   isDarkMode
                     ? "bg-white text-slate-900 hover:bg-indigo-100"
@@ -923,7 +923,7 @@ export default function LandingPage() {
               Terms
             </a>
             <span className={isDarkMode ? "text-slate-500" : "text-slate-500"}>
-              © {new Date().getFullYear()} Offyse Labs
+              © {new Date().getFullYear()} Offyse.com
             </span>
           </div>
         </div>
