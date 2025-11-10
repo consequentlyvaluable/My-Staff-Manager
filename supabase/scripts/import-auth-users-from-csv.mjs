@@ -35,7 +35,6 @@ for (const [index, record] of records.entries()) {
     continue;
   }
 
-  // eslint-disable-next-line no-await-in-loop
   const { error } = await supabase.auth.admin.createUser({
     email,
     password,
