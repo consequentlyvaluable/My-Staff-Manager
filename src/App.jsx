@@ -11,6 +11,7 @@ import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
+import LandingLegalPage from "./components/LandingLegalPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -123,6 +124,33 @@ const shouldRenderLandingPage = () => {
   }
 
   return false;
+};
+
+const resolveLandingRoute = () => {
+  if (typeof window === "undefined") {
+    return { renderLanding: false, variant: "landing" };
+  }
+
+  const rawPathname = window.location.pathname ?? "";
+  const normalizedPathname = rawPathname.toLowerCase();
+  const trimmedPathname = normalizedPathname.replace(/\/+$/, "");
+
+  const matchesPath = (target) =>
+    trimmedPathname === target || trimmedPathname.startsWith(`${target}/`);
+
+  if (matchesPath("/landing/privacy") || matchesPath("/privacy")) {
+    return { renderLanding: true, variant: "privacy" };
+  }
+
+  if (matchesPath("/landing/terms") || matchesPath("/terms")) {
+    return { renderLanding: true, variant: "terms" };
+  }
+
+  if (shouldRenderLandingPage()) {
+    return { renderLanding: true, variant: "landing" };
+  }
+
+  return { renderLanding: false, variant: "landing" };
 };
 
 const buildEmployeeLookup = (list) => {
@@ -2111,15 +2139,16 @@ function StaffManagerApp() {
 }
 
 export default function App() {
-  const [renderLanding, setRenderLanding] = useState(() =>
-    shouldRenderLandingPage()
-  );
+  const [landingState, setLandingState] = useState(() => resolveLandingRoute());
 
   useEffect(() => {
-    setRenderLanding(shouldRenderLandingPage());
+    setLandingState(resolveLandingRoute());
   }, []);
 
-  if (renderLanding) {
+  if (landingState.renderLanding) {
+    if (landingState.variant === "privacy" || landingState.variant === "terms") {
+      return <LandingLegalPage variant={landingState.variant} />;
+    }
     return <LandingPage />;
   }
 
