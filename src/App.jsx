@@ -9,6 +9,7 @@ import Reports from "./components/Reports";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
+import ToastContainer from "./components/Toast";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -344,6 +345,32 @@ export default function App() {
   const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState("");
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
+  const [toasts, setToasts] = useState([]);
+
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const showToast = useCallback(
+    (message, variant = "success") => {
+      const id =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      setToasts((prev) => [...prev, { id, message, variant }]);
+
+      const scheduleTimeout =
+        typeof window !== "undefined" && typeof window.setTimeout === "function"
+          ? window.setTimeout
+          : setTimeout;
+
+      scheduleTimeout(() => {
+        removeToast(id);
+      }, 4000);
+    },
+    [removeToast]
+  );
 
   const canManageAll = currentUser?.permissions?.canManageAll ?? true;
   const canEditTeam = currentUser?.permissions?.canEditTeam ?? canManageAll;
@@ -975,6 +1002,7 @@ export default function App() {
             };
           })
         );
+        showToast("Booking updated successfully.");
         setEditingId(null);
       } else {
         const created = await createRecord(payload);
@@ -985,6 +1013,7 @@ export default function App() {
             end: created.end ?? payload.end,
           };
           setRecords((prev) => [...prev, recordWithFallback]);
+          showToast("Booking added successfully.");
         }
       }
       setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
@@ -1068,6 +1097,7 @@ export default function App() {
         setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
       }
 
+      showToast("Booking updated successfully.");
       return { success: true };
     } catch (error) {
       console.error("Failed to update booking", error);
@@ -1476,6 +1506,7 @@ export default function App() {
           </div>
         )}
       </ConfirmDialog>
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
   );
 }
