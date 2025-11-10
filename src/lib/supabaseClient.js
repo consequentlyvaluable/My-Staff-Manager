@@ -400,6 +400,80 @@ export const completeAuthFromHash = async (hashFragment, searchQuery) => {
     type: eventType,
     email,
   });
+};
+
+const verifyOtpToken = async ({ token, type, email }) => {
+  if (!token) {
+    throw new Error("A Supabase OTP token is required to complete verification.");
+  }
+
+  const payload = {
+    type: type || "magiclink",
+    token,
+    token_hash: token,
+  };
+
+  if (email) {
+    payload.email = email;
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...baseHeaders,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseResponse(response);
+  return createSessionFromVerifyResponse(data);
+};
+
+export const completeAuthFromHash = async (hashFragment, searchQuery) => {
+  if (!isSupabaseConfigured) return null;
+
+  if (
+    typeof hashFragment === "undefined" ||
+    typeof searchQuery === "undefined"
+  ) {
+    if (typeof window === "undefined") return null;
+    if (typeof hashFragment === "undefined") {
+      hashFragment = window.location.hash;
+    }
+    if (typeof searchQuery === "undefined") {
+      searchQuery = window.location.search;
+    }
+  }
+
+  const params = mergeSearchParams(hashFragment, searchQuery);
+  const eventType = params.get("type") || null;
+
+  const accessToken = params.get("access_token");
+  if (accessToken) {
+    const refreshToken = params.get("refresh_token");
+    const expiresIn = params.get("expires_in");
+    const tokenType = params.get("token_type");
+
+    const session = await createSessionFromAccessToken({
+      accessToken,
+      refreshToken,
+      expiresIn,
+      tokenType,
+    });
+
+    return { session, eventType };
+  }
+
+  const otpToken = params.get("token") || params.get("token_hash");
+  if (!otpToken) return null;
+
+  const email = params.get("email") || params.get("email_address");
+  const session = await verifyOtpToken({
+    token: otpToken,
+    type: eventType,
+    email,
+  });
 
   return { session, eventType };
 };
