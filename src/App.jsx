@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import BookingForm from "./components/BookingForm";
@@ -310,6 +310,30 @@ const createUniqueId = (prefix = "id") => {
   return `${prefix}-${random}-${Date.now()}`;
 };
 
+const CALENDAR_POPOVER_WIDTH = 352;
+const CALENDAR_POPOVER_HEIGHT = 320;
+const CALENDAR_POPOVER_PADDING = 16;
+const CALENDAR_POPOVER_VERTICAL_OFFSET = 12;
+
+const clampCalendarPopoverPosition = (position, size) => {
+  if (typeof window === "undefined") return position;
+  const viewportWidth = window.innerWidth || 0;
+  const viewportHeight = window.innerHeight || 0;
+  const width = Math.min(size.width, viewportWidth - CALENDAR_POPOVER_PADDING * 2);
+  const height = Math.min(size.height, viewportHeight - CALENDAR_POPOVER_PADDING * 2);
+  const maxLeft = viewportWidth - CALENDAR_POPOVER_PADDING - width;
+  const maxTop = viewportHeight - CALENDAR_POPOVER_PADDING - height;
+  const left = Math.min(
+    Math.max(CALENDAR_POPOVER_PADDING, position.left),
+    Math.max(CALENDAR_POPOVER_PADDING, maxLeft)
+  );
+  const top = Math.min(
+    Math.max(CALENDAR_POPOVER_PADDING, position.top),
+    Math.max(CALENDAR_POPOVER_PADDING, maxTop)
+  );
+  return { top, left };
+};
+
 function createEmptyForm(name = "") {
   return {
     name,
@@ -356,6 +380,27 @@ export default function App() {
   const [changePasswordError, setChangePasswordError] = useState("");
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
   const [toasts, setToasts] = useState([]);
+  const [calendarEditingId, setCalendarEditingId] = useState(null);
+  const [calendarPopoverPosition, setCalendarPopoverPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+  const [calendarEditValues, setCalendarEditValues] = useState({
+    type: "Vacation",
+    start: "",
+    end: "",
+  });
+  const [calendarEditError, setCalendarEditError] = useState("");
+  const [calendarEditSubmitting, setCalendarEditSubmitting] = useState(false);
+  const calendarPopoverRef = useRef(null);
+  const calendarPopoverFirstFieldRef = useRef(null);
+  const calendarEditingRecord = useMemo(
+    () =>
+      calendarEditingId
+        ? records.find((record) => record.id === calendarEditingId) || null
+        : null,
+    [calendarEditingId, records]
+  );
 
   const clientInstanceId = useMemo(() => createUniqueId("client"), []);
 
@@ -428,6 +473,67 @@ export default function App() {
   const dismissToast = useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
+
+  const closeCalendarPopover = useCallback(() => {
+    setCalendarEditingId(null);
+    setCalendarEditValues({ type: "Vacation", start: "", end: "" });
+    setCalendarEditError("");
+    setCalendarEditSubmitting(false);
+  }, []);
+
+  const handleCalendarEventDoubleClick = useCallback(
+    (event, nativeEvent) => {
+      if (!event) return;
+      const booking = records.find((record) => record.id === event.id);
+      if (!booking) return;
+      if (!canEditRecord(booking)) {
+        alert("You do not have permission to edit this booking.");
+        return;
+      }
+
+      const sourceEvent = nativeEvent?.nativeEvent ?? nativeEvent;
+      const pointerX =
+        typeof sourceEvent?.clientX === "number"
+          ? sourceEvent.clientX
+          : typeof sourceEvent?.pageX === "number"
+          ? sourceEvent.pageX
+          : typeof window !== "undefined"
+          ? window.innerWidth / 2
+          : 0;
+      const pointerY =
+        typeof sourceEvent?.clientY === "number"
+          ? sourceEvent.clientY
+          : typeof sourceEvent?.pageY === "number"
+          ? sourceEvent.pageY
+          : typeof window !== "undefined"
+          ? window.innerHeight / 2
+          : 0;
+
+      if (typeof sourceEvent?.preventDefault === "function") {
+        sourceEvent.preventDefault();
+      }
+
+      let nextPosition = {
+        left: pointerX - CALENDAR_POPOVER_WIDTH / 2,
+        top: pointerY + CALENDAR_POPOVER_VERTICAL_OFFSET,
+      };
+      const size = { width: CALENDAR_POPOVER_WIDTH, height: CALENDAR_POPOVER_HEIGHT };
+      if (typeof window !== "undefined") {
+        nextPosition = clampCalendarPopoverPosition(nextPosition, size);
+      }
+
+      setCalendarPopoverPosition(nextPosition);
+      setCalendarEditValues({
+        type: booking.type === "Travel" ? "Travel" : "Vacation",
+        start: toDateTimeLocalInput(booking.start),
+        end: toDateTimeLocalInput(booking.end),
+      });
+      setCalendarEditError("");
+      setCalendarEditSubmitting(false);
+      setCalendarEditingId(booking.id);
+    },
+    [records, canEditRecord]
+  );
 
   const showToastForEvent = useCallback(
     (event) => {
@@ -898,6 +1004,74 @@ export default function App() {
     setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   }, [currentUser, editingId]);
 
+  useEffect(() => {
+    if (!calendarEditingId) return undefined;
+    const bookingExists = records.some((record) => record.id === calendarEditingId);
+    if (!bookingExists) {
+      closeCalendarPopover();
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!calendarPopoverRef.current) return;
+      if (calendarPopoverRef.current.contains(event.target)) return;
+      closeCalendarPopover();
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCalendarPopover();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [calendarEditingId, records, closeCalendarPopover]);
+
+  useEffect(() => {
+    if (!calendarEditingId) return;
+    if (!calendarPopoverFirstFieldRef.current) return;
+    const focusTimer = requestAnimationFrame(() => {
+      calendarPopoverFirstFieldRef.current?.focus?.();
+    });
+    return () => {
+      cancelAnimationFrame(focusTimer);
+    };
+  }, [calendarEditingId]);
+
+  useEffect(() => {
+    if (!calendarEditingId) return undefined;
+    if (typeof window === "undefined") return undefined;
+
+    const handleResize = () => {
+      setCalendarPopoverPosition((prev) =>
+        clampCalendarPopoverPosition(prev, {
+          width: CALENDAR_POPOVER_WIDTH,
+          height: CALENDAR_POPOVER_HEIGHT,
+        })
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [calendarEditingId]);
+
+  useEffect(() => {
+    if (!calendarEditingId) return;
+    if (currentPage !== "dashboard" || !canCreateOrEdit) {
+      closeCalendarPopover();
+    }
+  }, [calendarEditingId, currentPage, canCreateOrEdit, closeCalendarPopover]);
+
   const validateRecordDetails = useCallback(
     ({ name, start, end }, editingRecordId = null) => {
       if (!name) return "Please select an employee.";
@@ -1266,6 +1440,37 @@ export default function App() {
     }
   };
 
+  const handleCalendarEditFieldChange = useCallback((field, value) => {
+    setCalendarEditValues((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleCalendarPopoverSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!calendarEditingId) return;
+      setCalendarEditSubmitting(true);
+      setCalendarEditError("");
+      try {
+        const result = await handleInlineBookingUpdate(calendarEditingId, {
+          type: calendarEditValues.type,
+          start: calendarEditValues.start,
+          end: calendarEditValues.end,
+        });
+        if (result?.error) {
+          setCalendarEditError(result.error);
+          return;
+        }
+        closeCalendarPopover();
+      } catch (error) {
+        console.error("Failed to update booking", error);
+        setCalendarEditError("Failed to update booking. Please try again.");
+      } finally {
+        setCalendarEditSubmitting(false);
+      }
+    },
+    [calendarEditingId, calendarEditValues, handleInlineBookingUpdate, closeCalendarPopover]
+  );
+
   const startEdit = (record) => {
     if (!canEditRecord(record)) {
       alert("You do not have permission to edit this booking.");
@@ -1556,6 +1761,7 @@ export default function App() {
                   onEventResize={handleCalendarEventResize}
                   canModifyEmployee={canModifyEmployee}
                   allowEventEditing={canCreateOrEdit}
+                  onEventDoubleClick={handleCalendarEventDoubleClick}
                 />
               </div>
             </div>
@@ -1587,6 +1793,115 @@ export default function App() {
           {currentPage === "reports" && <Reports records={records} />}
         </main>
       </div>
+      {calendarEditingId && calendarEditingRecord && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/20"
+            aria-hidden="true"
+            onClick={closeCalendarPopover}
+          />
+          <div
+            ref={calendarPopoverRef}
+            className="fixed z-50 w-[22rem] max-w-full rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-xl dark:border-gray-600 dark:bg-gray-800"
+            style={{
+              top: calendarPopoverPosition.top,
+              left: calendarPopoverPosition.left,
+              width: "min(22rem, calc(100vw - 32px))",
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit booking"
+          >
+            <form className="space-y-4" onSubmit={handleCalendarPopoverSubmit}>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  Editing booking for
+                </p>
+                <p className="mt-1 text-base font-semibold text-gray-800 dark:text-gray-100">
+                  {calendarEditingRecord.name}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  Booking type
+                </label>
+                <select
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  value={calendarEditValues.type}
+                  onChange={(event) =>
+                    handleCalendarEditFieldChange(
+                      "type",
+                      event.target.value === "Travel" ? "Travel" : "Vacation"
+                    )
+                  }
+                  disabled={calendarEditSubmitting}
+                >
+                  <option value="Vacation">Vacation</option>
+                  <option value="Travel">Travel</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  Start
+                </label>
+                <input
+                  ref={calendarPopoverFirstFieldRef}
+                  type="datetime-local"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  value={calendarEditValues.start}
+                  onChange={(event) =>
+                    handleCalendarEditFieldChange("start", event.target.value)
+                  }
+                  required
+                  disabled={calendarEditSubmitting}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  End
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  value={calendarEditValues.end}
+                  onChange={(event) =>
+                    handleCalendarEditFieldChange("end", event.target.value)
+                  }
+                  required
+                  disabled={calendarEditSubmitting}
+                />
+              </div>
+
+              {calendarEditError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {calendarEditError}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                  onClick={closeCalendarPopover}
+                  disabled={calendarEditSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={calendarEditSubmitting}
+                >
+                  {calendarEditSubmitting ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
       <ChangePasswordDialog
         open={changePasswordOpen}
         onClose={closeChangePasswordDialog}

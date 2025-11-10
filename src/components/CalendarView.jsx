@@ -45,6 +45,7 @@ export default function CalendarView({
   onEventResize,
   canModifyEmployee = () => true,
   allowEventEditing = true,
+  onEventDoubleClick,
 }) {
   const events = records
     .map((r) => {
@@ -94,6 +95,13 @@ export default function CalendarView({
           })}
           onEventDrop={allowEventEditing ? onEventDrop : undefined}
           onEventResize={allowEventEditing ? onEventResize : undefined}
+          onDoubleClickEvent={
+            allowEventEditing && typeof onEventDoubleClick === "function"
+              ? (event, nativeEvent) => {
+                  onEventDoubleClick(event, nativeEvent);
+                }
+              : undefined
+          }
           resizable={allowEventEditing}
           draggableAccessor={(event) =>
             allowEventEditing && canModifyEmployee(event.employeeLabel)
