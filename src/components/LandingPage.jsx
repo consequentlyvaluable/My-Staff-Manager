@@ -907,7 +907,7 @@ export default function LandingPage() {
               Contact
             </a>
             <a
-              href="https://offyse.com/privacy"
+              href="/landing/privacy"
               className={`transition-colors ${
                 isDarkMode ? "hover:text-white" : "hover:text-slate-900"
               }`}
@@ -915,7 +915,7 @@ export default function LandingPage() {
               Privacy
             </a>
             <a
-              href="https://offyse.com/terms"
+              href="/landing/terms"
               className={`transition-colors ${
                 isDarkMode ? "hover:text-white" : "hover:text-slate-900"
               }`}
