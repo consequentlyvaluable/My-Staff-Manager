@@ -247,20 +247,42 @@ const createSessionFromAccessToken = async ({
   return session;
 };
 
-export const completeAuthFromHash = async (hashFragment) => {
+const createSearchParams = (value) => {
+  if (!value || typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const normalized = trimmed.replace(/^[?#]/, "");
+  if (!normalized) return null;
+
+  return new URLSearchParams(normalized);
+};
+
+export const completeAuthFromHash = async (hashFragment, searchQuery) => {
   if (!isSupabaseConfigured) return null;
 
-  if (typeof hashFragment === "undefined") {
+  if (
+    typeof hashFragment === "undefined" ||
+    typeof searchQuery === "undefined"
+  ) {
     if (typeof window === "undefined") return null;
-    hashFragment = window.location.hash;
+    if (typeof hashFragment === "undefined") {
+      hashFragment = window.location.hash;
+    }
+    if (typeof searchQuery === "undefined") {
+      searchQuery = window.location.search;
+    }
   }
 
-  if (!hashFragment || typeof hashFragment !== "string") {
-    return null;
+  let params = createSearchParams(hashFragment);
+  let accessToken = params?.get("access_token");
+
+  if (!accessToken) {
+    params = createSearchParams(searchQuery);
+    accessToken = params?.get("access_token");
   }
 
-  const params = new URLSearchParams(hashFragment.replace(/^#/, ""));
-  const accessToken = params.get("access_token");
   if (!accessToken) return null;
 
   const refreshToken = params.get("refresh_token");

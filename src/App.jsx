@@ -213,6 +213,46 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
   };
 };
 
+const clearSupabaseAuthParamsFromUrl = () => {
+  if (typeof window === "undefined") return;
+
+  const authKeys = [
+    "access_token",
+    "refresh_token",
+    "expires_in",
+    "token_type",
+    "type",
+  ];
+
+  const { pathname, search, hash } = window.location;
+  const searchParams = new URLSearchParams(search);
+  const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+
+  let modified = false;
+
+  for (const key of authKeys) {
+    if (searchParams.has(key)) {
+      searchParams.delete(key);
+      modified = true;
+    }
+    if (hashParams.has(key)) {
+      hashParams.delete(key);
+      modified = true;
+    }
+  }
+
+  if (!modified) return;
+
+  const newSearch = searchParams.toString();
+  const newHash = hashParams.toString();
+  const nextUrl =
+    `${pathname}` +
+    (newSearch ? `?${newSearch}` : "") +
+    (newHash ? `#${newHash}` : "");
+
+  window.history.replaceState(null, document.title, nextUrl);
+};
+
 const toDateTimeLocalInput = (value) => {
   if (!value) return "";
   const date = new Date(value);
@@ -529,10 +569,11 @@ export default function App() {
     let ignore = false;
 
     const applyHashSession = async () => {
-      if (!window.location.hash) return;
+      const { hash, search } = window.location;
+      if (!hash && !search) return;
 
       try {
-        const result = await completeAuthFromHash();
+        const result = await completeAuthFromHash(hash, search);
         if (!result?.session?.user || ignore) return;
 
         const { user } = result.session;
@@ -562,14 +603,7 @@ export default function App() {
           setChangePasswordLoading(false);
         }
 
-        if (window.location.hash) {
-          const { pathname, search } = window.location;
-          window.history.replaceState(
-            null,
-            document.title,
-            `${pathname}${search}`
-          );
-        }
+        clearSupabaseAuthParamsFromUrl();
       } catch (error) {
         console.warn("Unable to complete Supabase auth from URL", error);
       }
