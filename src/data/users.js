@@ -1,5 +1,7 @@
 import { employees } from "./employees";
 
+const DEFAULT_PASSWORD = "ChangeMe123!";
+
 
 
 const normalizeName = (entry) => entry.replace(/^\d+\.\s*/, "");

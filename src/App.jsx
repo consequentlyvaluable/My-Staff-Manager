@@ -741,30 +741,50 @@ export default function App() {
     setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   }, [currentUser, editingId]);
 
-  // validation
-  const validateRecord = () => {
-    if (!form.name) return "Please select an employee.";
-    if (!form.start || !form.end)
-      return "Both start and end date & time values are required.";
-    const startDate = new Date(form.start);
-    const endDate = new Date(form.end);
-    if (isAfter(startDate, endDate))
-      return "End date must be on or after start date.";
+  const validateRecordDetails = useCallback(
+    ({ name, start, end }, editingRecordId = null) => {
+      if (!name) return "Please select an employee.";
+      if (!start || !end)
+        return "Both start and end date & time values are required.";
 
-    for (const r of records) {
-      if (r.name !== form.name) continue;
-      if (editingId && r.id === editingId) continue;
-      const rStart = new Date(r.start);
-      const rEnd = new Date(r.end);
-      if (
-        (isBefore(startDate, rEnd) || isEqual(startDate, rEnd)) &&
-        (isAfter(endDate, rStart) || isEqual(endDate, rStart))
-      ) {
-        return `${form.name} already has a booking that overlaps these dates.`;
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return "Please provide valid start and end dates.";
       }
-    }
-    return null;
-  };
+      if (isAfter(startDate, endDate))
+        return "End date must be on or after start date.";
+
+      for (const r of records) {
+        if (r.name !== name) continue;
+        if (editingRecordId && r.id === editingRecordId) continue;
+        const rStart = new Date(r.start);
+        const rEnd = new Date(r.end);
+        if (
+          Number.isNaN(rStart.getTime()) ||
+          Number.isNaN(rEnd.getTime())
+        ) {
+          continue;
+        }
+        if (
+          (isBefore(startDate, rEnd) || isEqual(startDate, rEnd)) &&
+          (isAfter(endDate, rStart) || isEqual(endDate, rStart))
+        ) {
+          return `${name} already has a booking that overlaps these dates.`;
+        }
+      }
+
+      return null;
+    },
+    [records]
+  );
+
+  // validation
+  const validateRecord = () =>
+    validateRecordDetails(
+      { name: form.name, start: form.start, end: form.end },
+      editingId
+    );
 
   // handlers
   const handleCalendarUpdate = useCallback(
@@ -869,7 +889,7 @@ export default function App() {
         }
       }
     },
-    [records, isSupabaseConfigured, canEditRecord]
+    [records, canEditRecord]
   );
 
   const handleCalendarEventDrop = useCallback(
@@ -985,6 +1005,74 @@ export default function App() {
     }
     setDeleteError("");
     setPendingDelete(rec);
+  };
+
+  const handleInlineBookingUpdate = async (recordId, updates) => {
+    const target = records.find((r) => r.id === recordId);
+    if (!target) {
+      return { error: "The booking you tried to edit could not be found." };
+    }
+    if (!canEditRecord(target)) {
+      return { error: "You do not have permission to edit this booking." };
+    }
+
+    const sanitizedType = updates?.type === "Travel" ? "Travel" : "Vacation";
+    const startValue = updates?.start ?? "";
+    const endValue = updates?.end ?? "";
+
+    const validationError = validateRecordDetails(
+      { name: target.name, start: startValue, end: endValue },
+      recordId
+    );
+    if (validationError) {
+      return { error: validationError };
+    }
+    if (!canModifyEmployee(target.name)) {
+      return {
+        error: "You do not have permission to manage bookings for this employee.",
+      };
+    }
+    if (!isSupabaseConfigured) {
+      return { error: "Supabase is not configured. Unable to update booking." };
+    }
+
+    const payload = {
+      name: target.name,
+      type: sanitizedType,
+      start: toIsoStringIfPossible(startValue),
+      end: toIsoStringIfPossible(endValue),
+    };
+
+    try {
+      const updated = await updateRecord(recordId, payload);
+      setRecords((prev) =>
+        prev.map((rec) => {
+          if (rec.id !== recordId) return rec;
+          if (!updated) {
+            return {
+              ...rec,
+              ...payload,
+            };
+          }
+          return {
+            ...rec,
+            ...updated,
+            start: updated.start ?? payload.start,
+            end: updated.end ?? payload.end,
+          };
+        })
+      );
+
+      if (editingId === recordId) {
+        setEditingId(null);
+        setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to update booking", error);
+      return { error: "Failed to update booking. Please try again." };
+    }
   };
 
   const startEdit = (record) => {
@@ -1288,9 +1376,10 @@ export default function App() {
                 records={records}
                 search={search}
                 setSearch={setSearch}
-                startEdit={startEdit}
+                onUpdateBooking={handleInlineBookingUpdate}
                 deleteRecord={deleteRecord}
                 loading={loadingEmployees}
+                canEditRecord={canEditRecord}
               />
             </div>
           )}
