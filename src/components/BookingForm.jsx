@@ -1,5 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const ALL_DAY_START_TIME = "00:00";
+const ALL_DAY_END_TIME = "23:59";
+
+const getDatePart = (value) => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const [datePart] = trimmed.split("T");
+  return datePart || "";
+};
+
+const combineDateAndTime = (datePart, timePart) =>
+  datePart ? `${datePart}T${timePart}` : "";
+
+const ensureAllDayRange = (startValue, endValue) => {
+  const startDate = getDatePart(startValue);
+  const endDate = getDatePart(endValue) || startDate;
+  const normalizedStart = combineDateAndTime(startDate, ALL_DAY_START_TIME);
+  const normalizedEnd = combineDateAndTime(endDate, ALL_DAY_END_TIME);
+  return [normalizedStart, normalizedEnd];
+};
+
 export default function BookingForm({
   form,
   setForm,
@@ -134,6 +156,65 @@ export default function BookingForm({
     if (event.key === "Escape") {
       setIsEmployeeListOpen(false);
     }
+  };
+
+  const isAllDay = Boolean(form.allDay);
+  const startInputValue = isAllDay
+    ? getDatePart(form.start)
+    : form.start ?? "";
+  const endInputValue = isAllDay
+    ? getDatePart(form.end)
+    : form.end ?? "";
+
+  const handleAllDayToggle = (event) => {
+    const checked = event.target.checked;
+    if (checked) {
+      const [nextStart, nextEnd] = ensureAllDayRange(
+        form.start,
+        form.end || form.start
+      );
+      setForm({
+        ...form,
+        allDay: true,
+        start: nextStart,
+        end: nextEnd,
+      });
+      return;
+    }
+
+    setForm({ ...form, allDay: false });
+  };
+
+  const handleAllDayStartChange = (value) => {
+    const [nextStart, potentialEnd] = ensureAllDayRange(value, form.end);
+    const nextStartDate = getDatePart(nextStart);
+    const currentEndDate = getDatePart(form.end);
+    const normalizedEnd =
+      currentEndDate && nextStartDate && currentEndDate < nextStartDate
+        ? combineDateAndTime(nextStartDate, ALL_DAY_END_TIME)
+        : potentialEnd;
+
+    setForm({
+      ...form,
+      start: nextStart,
+      end: normalizedEnd,
+    });
+  };
+
+  const handleAllDayEndChange = (value) => {
+    const [potentialStart, nextEnd] = ensureAllDayRange(form.start, value);
+    const currentStartDate = getDatePart(form.start);
+    const nextEndDate = getDatePart(nextEnd);
+    const normalizedStart =
+      currentStartDate && nextEndDate && nextEndDate < currentStartDate
+        ? combineDateAndTime(nextEndDate, ALL_DAY_START_TIME)
+        : potentialStart;
+
+    setForm({
+      ...form,
+      start: normalizedStart,
+      end: nextEnd,
+    });
   };
 
   return (
@@ -341,6 +422,38 @@ export default function BookingForm({
           </div>
         </div>
 
+        {/* All day toggle */}
+        <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 shadow-inner shadow-slate-900/5 transition dark:border-slate-700/70 dark:bg-slate-800/70">
+          <div>
+            <label
+              htmlFor="booking-form-all-day"
+              className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            >
+              All day booking
+            </label>
+            <p className="mt-1 text-[11px] leading-4 text-slate-400 dark:text-slate-500">
+              Skip choosing exact times when the time off lasts the entire day.
+            </p>
+          </div>
+          <label
+            htmlFor="booking-form-all-day"
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center ${
+              isDisabled ? "opacity-60" : ""
+            }`}
+          >
+            <input
+              id="booking-form-all-day"
+              type="checkbox"
+              className="peer sr-only"
+              checked={isAllDay}
+              onChange={handleAllDayToggle}
+              disabled={isDisabled}
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-sky-500 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-500 dark:bg-slate-700 dark:peer-checked:bg-sky-500/80"></span>
+            <span className="absolute left-1 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-5 peer-checked:bg-white dark:bg-slate-300"></span>
+          </label>
+        </div>
+
         {/* Dates & Times */}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -348,11 +461,18 @@ export default function BookingForm({
               Start date & time
             </label>
             <input
-              type="datetime-local"
+              type={isAllDay ? "date" : "datetime-local"}
               className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
-              value={form.start}
-              onChange={(e) => setForm({ ...form, start: e.target.value })}
-              step="60"
+              value={startInputValue}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                if (isAllDay) {
+                  handleAllDayStartChange(nextValue);
+                } else {
+                  setForm({ ...form, start: nextValue });
+                }
+              }}
+              step={isAllDay ? undefined : "60"}
               disabled={isDisabled}
             />
           </div>
@@ -361,11 +481,18 @@ export default function BookingForm({
               End date & time
             </label>
             <input
-              type="datetime-local"
+              type={isAllDay ? "date" : "datetime-local"}
               className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
-              value={form.end}
-              onChange={(e) => setForm({ ...form, end: e.target.value })}
-              step="60"
+              value={endInputValue}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                if (isAllDay) {
+                  handleAllDayEndChange(nextValue);
+                } else {
+                  setForm({ ...form, end: nextValue });
+                }
+              }}
+              step={isAllDay ? undefined : "60"}
               disabled={isDisabled}
             />
           </div>

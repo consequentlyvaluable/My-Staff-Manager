@@ -281,6 +281,58 @@ const toIsoStringIfPossible = (value) => {
   return date.toISOString();
 };
 
+const ALL_DAY_START_TIME = "00:00";
+const ALL_DAY_END_TIME = "23:59";
+
+const getDatePart = (value) => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const [datePart] = trimmed.split("T");
+  return datePart || "";
+};
+
+const combineDateAndTime = (datePart, timePart) =>
+  datePart ? `${datePart}T${timePart}` : "";
+
+const ensureAllDayRange = (startValue, endValue) => {
+  const startDate = getDatePart(startValue);
+  const endDate = getDatePart(endValue) || startDate;
+  const normalizedStart = combineDateAndTime(startDate, ALL_DAY_START_TIME);
+  const normalizedEnd = combineDateAndTime(endDate, ALL_DAY_END_TIME);
+  return [normalizedStart, normalizedEnd];
+};
+
+const deriveAllDayInputsFromIso = (startIso, endIso) => {
+  const [startValue, endValue] = ensureAllDayRange(
+    toDateTimeLocalInput(startIso),
+    toDateTimeLocalInput(endIso)
+  );
+  return [startValue, endValue];
+};
+
+const isAllDayRange = (start, end) => {
+  if (!start || !end) return false;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return false;
+  }
+
+  const startIsMidnight =
+    startDate.getHours() === 0 &&
+    startDate.getMinutes() === 0 &&
+    startDate.getSeconds() === 0;
+
+  const endSeconds = endDate.getSeconds();
+  const endIsEndOfDay =
+    endDate.getHours() === 23 &&
+    endDate.getMinutes() === 59 &&
+    (endSeconds === 0 || endSeconds === 59);
+
+  return startIsMidnight && endIsEndOfDay;
+};
+
 const formatDateForSummary = (value) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -340,6 +392,7 @@ function createEmptyForm(name = "") {
     type: "Vacation",
     start: "",
     end: "",
+    allDay: false,
   };
 }
 
@@ -1111,11 +1164,15 @@ export default function App() {
   );
 
   // validation
-  const validateRecord = () =>
-    validateRecordDetails(
-      { name: form.name, start: form.start, end: form.end },
+  const validateRecord = () => {
+    const [normalizedStart, normalizedEnd] = form.allDay
+      ? ensureAllDayRange(form.start, form.end)
+      : [form.start, form.end];
+    return validateRecordDetails(
+      { name: form.name, start: normalizedStart, end: normalizedEnd },
       editingId
     );
+  };
 
   // handlers
   const handleCalendarUpdate = useCallback(
@@ -1295,11 +1352,14 @@ export default function App() {
 
     setIsSaving(true);
     try {
+      const [normalizedStart, normalizedEnd] = form.allDay
+        ? ensureAllDayRange(form.start, form.end)
+        : [form.start, form.end];
       const payload = {
         name: form.name,
         type: form.type,
-        start: toIsoStringIfPossible(form.start),
-        end: toIsoStringIfPossible(form.end),
+        start: toIsoStringIfPossible(normalizedStart),
+        end: toIsoStringIfPossible(normalizedEnd),
       };
 
       if (editingId) {
@@ -1476,11 +1536,18 @@ export default function App() {
       alert("You do not have permission to edit this booking.");
       return;
     }
+    const recordAllDay = isAllDayRange(record.start, record.end);
+    const [allDayStart, allDayEnd] = recordAllDay
+      ? deriveAllDayInputsFromIso(record.start, record.end)
+      : ["", ""];
+    const fallbackStart = toDateTimeLocalInput(record.start);
+    const fallbackEnd = toDateTimeLocalInput(record.end);
     setForm({
       name: record.name,
       type: record.type,
-      start: toDateTimeLocalInput(record.start),
-      end: toDateTimeLocalInput(record.end),
+      start: recordAllDay ? allDayStart || fallbackStart : fallbackStart,
+      end: recordAllDay ? allDayEnd || fallbackEnd : fallbackEnd,
+      allDay: recordAllDay,
     });
     setEditingId(record.id);
   };
