@@ -375,6 +375,18 @@ export const completeAuthFromHash = async (hashFragment, searchQuery) => {
   const params = mergeSearchParams(hashFragment, searchQuery);
   const eventType = params.get("type") || null;
 
+  const error = params.get("error");
+  if (error) {
+    return {
+      error: {
+        message: error,
+        code: params.get("error_code") || null,
+        description: params.get("error_description") || null,
+        eventType,
+      },
+    };
+  }
+
   const accessToken = params.get("access_token");
   if (accessToken) {
     const refreshToken = params.get("refresh_token");
