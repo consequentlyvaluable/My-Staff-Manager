@@ -10,6 +10,7 @@ import ConfirmDialog from "./components/ConfirmDialog";
 import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
+import LandingPage from "./components/LandingPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -87,6 +88,41 @@ const toStringArray = (value) => {
       .filter((item) => item.length > 0);
   }
   return [];
+};
+
+const shouldRenderLandingPage = () => {
+  if (typeof window === "undefined") return false;
+
+  const hostname = window.location.hostname?.toLowerCase?.() ?? "";
+  if (!hostname) return false;
+
+  if (hostname === "landing.offyse.com") {
+    return true;
+  }
+
+  if (
+    hostname.startsWith("landing.") &&
+    (hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".test"))
+  ) {
+    return true;
+  }
+
+  const search = window.location.search ?? "";
+  if (search) {
+    const params = new URLSearchParams(search);
+    if (params.has("landing")) {
+      return true;
+    }
+  }
+
+  const pathname = window.location.pathname?.toLowerCase?.() ?? "";
+  if (pathname.startsWith("/landing")) {
+    return true;
+  }
+
+  return false;
 };
 
 const buildEmployeeLookup = (list) => {
@@ -396,8 +432,7 @@ function createEmptyForm(name = "") {
   };
 }
 
-
-export default function App() {
+function StaffManagerApp() {
   const [records, setRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [employees, setEmployees] = useState([]);
@@ -1421,12 +1456,13 @@ export default function App() {
     setPendingDelete(rec);
   };
 
-  const handleInlineBookingUpdate = async (recordId, updates) => {
-    const target = records.find((r) => r.id === recordId);
-    if (!target) {
-      return { error: "The booking you tried to edit could not be found." };
-    }
-    if (!canEditRecord(target)) {
+  const handleInlineBookingUpdate = useCallback(
+    async (recordId, updates) => {
+      const target = records.find((r) => r.id === recordId);
+      if (!target) {
+        return { error: "The booking you tried to edit could not be found." };
+      }
+      if (!canEditRecord(target)) {
       return { error: "You do not have permission to edit this booking." };
     }
 
@@ -1498,7 +1534,17 @@ export default function App() {
       console.error("Failed to update booking", error);
       return { error: "Failed to update booking. Please try again." };
     }
-  };
+    },
+    [
+      records,
+      canEditRecord,
+      validateRecordDetails,
+      canModifyEmployee,
+      editingId,
+      currentUser?.employeeLabel,
+      notifyBookingEvent,
+    ]
+  );
 
   const handleCalendarEditFieldChange = useCallback((field, value) => {
     setCalendarEditValues((prev) => ({ ...prev, [field]: value }));
@@ -2062,4 +2108,20 @@ export default function App() {
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
+}
+
+export default function App() {
+  const [renderLanding, setRenderLanding] = useState(() =>
+    shouldRenderLandingPage()
+  );
+
+  useEffect(() => {
+    setRenderLanding(shouldRenderLandingPage());
+  }, []);
+
+  if (renderLanding) {
+    return <LandingPage />;
+  }
+
+  return <StaffManagerApp />;
 }
