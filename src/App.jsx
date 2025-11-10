@@ -222,6 +222,12 @@ const clearSupabaseAuthParamsFromUrl = () => {
     "expires_in",
     "token_type",
     "type",
+    "code",
+    "state",
+    "token",
+    "token_hash",
+    "email",
+    "email_address",
   ];
 
   const { pathname, search, hash } = window.location;

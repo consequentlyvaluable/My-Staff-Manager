@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 const DEFAULT_SUPABASE_URL = "https://qbjsccnnkwbrytywvruw.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFianNjY25ua3dicnl0eXd2cnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDI5OTMsImV4cCI6MjA3NjI3ODk5M30.J4qLO8w4kkO1V2B0PibVhWuOBROxsUzLcCUPMhvwFXU";
@@ -13,6 +15,16 @@ const supabaseAnonKey = hasEnvSupabaseConfig
   : DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+const supabaseAuthClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        detectSessionInUrl: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
 
 const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
 
@@ -248,7 +260,13 @@ const createSessionFromAccessToken = async ({
 };
 
 const createSearchParams = (value) => {
-  if (!value || typeof value !== "string") return null;
+  if (!value) return null;
+
+  if (value instanceof URLSearchParams) {
+    return value;
+  }
+
+  if (typeof value !== "string") return null;
 
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -257,6 +275,85 @@ const createSearchParams = (value) => {
   if (!normalized) return null;
 
   return new URLSearchParams(normalized);
+};
+
+const mergeSearchParams = (...sources) => {
+  const merged = new URLSearchParams();
+
+  for (const source of sources) {
+    const params = createSearchParams(source);
+    if (!params) continue;
+
+    for (const [key, value] of params.entries()) {
+      if (!merged.has(key)) {
+        merged.set(key, value);
+      }
+    }
+  }
+
+  return merged;
+};
+
+const extractFirstSessionLike = (value) => {
+  if (!value || typeof value !== "object") return null;
+  if (value.access_token) return value;
+  if (value.session && typeof value.session === "object") {
+    return extractFirstSessionLike(value.session);
+  }
+  if (value.data && typeof value.data === "object") {
+    return extractFirstSessionLike(value.data);
+  }
+  return null;
+};
+
+const verifyOtpToken = async ({ token, type, email }) => {
+  if (!token) {
+    throw new Error("A Supabase OTP token is required to complete verification.");
+  }
+
+  if (!supabaseAuthClient) {
+    throw new Error("Supabase environment variables are not configured.");
+  }
+
+  const verificationType = type || "magiclink";
+
+  const payload = email
+    ? { email, token, type: verificationType }
+    : { token_hash: token, type: verificationType };
+
+  const { data, error } = await supabaseAuthClient.auth.verifyOtp(payload);
+  if (error) {
+    throw new Error(error.message || "Supabase rejected the provided token.");
+  }
+
+  const sessionLike = extractFirstSessionLike(data) || data?.session || null;
+  if (!sessionLike?.access_token) {
+    throw new Error("Supabase did not return an access token for the provided token.");
+  }
+
+  const session = {
+    ...sessionLike,
+    user: sessionLike.user || data?.user || null,
+  };
+
+  if (!session.user) {
+    return createSessionFromAccessToken({
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresIn: session.expires_in,
+      tokenType: session.token_type,
+    });
+  }
+
+  if (!session.expires_at && session.expires_in) {
+    const expiresInNumber = Number(session.expires_in);
+    if (Number.isFinite(expiresInNumber)) {
+      session.expires_at = Math.round(Date.now() / 1000 + expiresInNumber);
+    }
+  }
+
+  persistSession(session);
+  return session;
 };
 
 export const completeAuthFromHash = async (hashFragment, searchQuery) => {
@@ -275,52 +372,33 @@ export const completeAuthFromHash = async (hashFragment, searchQuery) => {
     }
   }
 
-  let params = createSearchParams(hashFragment);
-  let accessToken = params?.get("access_token");
+  const params = mergeSearchParams(hashFragment, searchQuery);
+  const eventType = params.get("type") || null;
 
-  if (!accessToken) {
-    params = createSearchParams(searchQuery);
-    accessToken = params?.get("access_token");
+  const accessToken = params.get("access_token");
+  if (accessToken) {
+    const refreshToken = params.get("refresh_token");
+    const expiresIn = params.get("expires_in");
+    const tokenType = params.get("token_type");
+
+    const session = await createSessionFromAccessToken({
+      accessToken,
+      refreshToken,
+      expiresIn,
+      tokenType,
+    });
+
+    return { session, eventType };
   }
 
-  if (!accessToken) return null;
+  const otpToken = params.get("token") || params.get("token_hash");
+  if (!otpToken) return null;
 
-const extractFirstSessionLike = (value) => {
-  if (!value || typeof value !== "object") return null;
-  if (value.access_token) return value;
-  if (value.session && typeof value.session === "object") {
-    return extractFirstSessionLike(value.session);
-  }
-  if (value.data && typeof value.data === "object") {
-    return extractFirstSessionLike(value.data);
-  }
-  return null;
-};
-
-const createSessionFromVerifyResponse = async (data) => {
-  if (!data) {
-    throw new Error("Supabase did not return data for the provided token.");
-  }
-
-  const sessionSource = extractFirstSessionLike(data) || data;
-
-  const accessToken = sessionSource.access_token || data.access_token;
-  if (!accessToken) {
-    throw new Error("Supabase did not return an access token for the provided token.");
-  }
-
-  const refreshToken =
-    sessionSource.refresh_token ?? data.refresh_token ?? data.data?.refresh_token ?? null;
-  const expiresIn =
-    sessionSource.expires_in ?? data.expires_in ?? data.data?.expires_in ?? null;
-  const tokenType =
-    sessionSource.token_type ?? data.token_type ?? data.data?.token_type ?? null;
-
-  return createSessionFromAccessToken({
-    accessToken,
-    refreshToken,
-    expiresIn,
-    tokenType,
+  const email = params.get("email") || params.get("email_address");
+  const session = await verifyOtpToken({
+    token: otpToken,
+    type: eventType,
+    email,
   });
 };
 
@@ -491,21 +569,20 @@ export const requestPasswordReset = async ({ email, redirectTo }) => {
     throw new Error("Email is required.");
   }
 
-  const payload = { email: trimmedEmail };
-  if (redirectTo) {
-    payload.redirect_to = redirectTo;
+  if (!supabaseAuthClient) {
+    throw new Error("Supabase environment variables are not configured.");
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...baseHeaders,
-    },
-    body: JSON.stringify(payload),
-  });
+  const { error } = await supabaseAuthClient.auth.resetPasswordForEmail(
+    trimmedEmail,
+    {
+      redirectTo,
+    }
+  );
 
-  await parseResponse(response);
+  if (error) {
+    throw new Error(error.message || "Supabase could not send the reset email.");
+  }
 };
 
 export const updateEmployeePassword = async ({ password }) => {
