@@ -30,6 +30,7 @@ export default function BookingTable({
   const pulseTimeoutRef = useRef();
   const [isEmailMenuOpen, setIsEmailMenuOpen] = useState(false);
   const emailMenuRef = useRef(null);
+  const [showPastBookings, setShowPastBookings] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -87,10 +88,22 @@ export default function BookingTable({
     startEdit(record);
   };
 
+  const now = new Date();
+  const visibleRecords = records.filter((record) => {
+    if (showPastBookings) return true;
+
+    if (!record.end) return true;
+
+    const endDate = new Date(record.end);
+    if (Number.isNaN(endDate.getTime())) return true;
+
+    return endDate >= now;
+  });
+
   const buildEmailDetails = () => {
     const subject = `Schedule Update – ${format(new Date(), "MMMM d, yyyy")}`;
-    const scheduleSummary = records.length
-      ? records
+    const scheduleSummary = visibleRecords.length
+      ? visibleRecords
           .map((record, index) => {
             const typeLabel =
               record.type === "Vacation" ? "Vacation" : "Travel";
@@ -181,6 +194,17 @@ export default function BookingTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button
+            type="button"
+            onClick={() => setShowPastBookings((prev) => !prev)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-1 dark:focus:ring-offset-gray-800 ${
+              showPastBookings
+                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                : "bg-white text-blue-600 border-blue-500 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300 dark:border-blue-400 dark:hover:bg-gray-700"
+            }`}
+          >
+            {showPastBookings ? "Hide Past Bookings" : "Show Past Bookings"}
+          </button>
           {hasAnyRecords && (
             <button
               className="bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg shadow text-sm"
@@ -216,7 +240,7 @@ export default function BookingTable({
           </tr>
         </thead>
         <tbody>
-          {records.map((r) => {
+          {visibleRecords.map((r) => {
             const allowEdit = canEditRecord(r);
             const allowDelete = canDeleteRecord(r);
             return (
@@ -264,10 +288,10 @@ export default function BookingTable({
             );
           })}
 
-          {records.length === 0 && (
+          {visibleRecords.length === 0 && (
             <tr>
               <td colSpan="5" className="text-center text-gray-500 p-4 dark:text-gray-300">
-                No matching records
+                {showPastBookings ? "No matching records" : "No upcoming bookings"}
               </td>
             </tr>
           )}
