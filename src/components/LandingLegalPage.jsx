@@ -6,7 +6,6 @@ const legalContent = {
     title: "Privacy Policy",
     subtitle:
       "We respect the trust you place in Offyse and are committed to protecting the data your team relies on.",
-    updatedAt: "April 15, 2024",
     sections: [
       {
         heading: "Information we collect",
@@ -49,7 +48,7 @@ const legalContent = {
     title: "Terms of Service",
     subtitle:
       "These terms describe your responsibilities when using Offyse to coordinate time away from work.",
-    updatedAt: "April 15, 2024",
+    
     sections: [
       {
         heading: "Acceptance of terms",
