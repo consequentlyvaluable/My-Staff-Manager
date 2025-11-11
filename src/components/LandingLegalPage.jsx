@@ -140,7 +140,9 @@ export default function LandingLegalPage({ variant = "privacy" }) {
     };
   }, [content.title]);
 
-  const toggleTheme = () => setIsDarkMode((previous) => !previous);
+  const setThemePreference = (mode) => {
+    setIsDarkMode(mode === "dark");
+  };
 
   return (
     <div
@@ -173,17 +175,40 @@ export default function LandingLegalPage({ variant = "privacy" }) {
             </span>
             Offyse
           </a>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          <div
+            className={`inline-flex overflow-hidden rounded-full border text-sm font-medium shadow-sm transition-colors focus-within:ring-2 focus-within:ring-indigo-500 ${
               isDarkMode
-                ? "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? "border-slate-700/70 bg-slate-900/80"
+                : "border-slate-200/80 bg-white/80"
             }`}
           >
-            {isDarkMode ? "Light mode" : "Dark mode"}
-          </button>
+            <button
+              type="button"
+              onClick={() => setThemePreference("light")}
+              aria-pressed={!isDarkMode}
+              className={`flex items-center gap-2 px-5 py-2.5 transition-colors focus:outline-none ${
+                isDarkMode
+                  ? "text-slate-400 hover:text-slate-200"
+                  : "bg-white text-slate-900"
+              }`}
+            >
+              <span className="text-lg">☀️</span>
+              <span className="font-semibold">Light Mode</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setThemePreference("dark")}
+              aria-pressed={isDarkMode}
+              className={`flex items-center gap-2 border-l px-5 py-2.5 transition-colors focus:outline-none ${
+                isDarkMode
+                  ? "border-slate-700/70 bg-slate-800/80 text-white"
+                  : "border-slate-200/80 text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className="text-lg">🌙</span>
+              <span className="font-semibold">Dark Mode</span>
+            </button>
+          </div>
         </div>
         <div className="mx-auto max-w-3xl px-6 pb-16 pt-8 md:px-8">
           <p className="text-sm uppercase tracking-wide text-indigo-500">Legal</p>
