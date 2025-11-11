@@ -193,9 +193,7 @@ export default function LandingLegalPage({ variant = "privacy" }) {
           <p className="mt-4 text-lg text-slate-600 dark:text-slate-300">
             {content.subtitle}
           </p>
-          <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
-            Last updated {content.updatedAt}
-          </p>
+          
         </div>
       </header>
 
