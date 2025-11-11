@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { handleLandingNavigation } from "../lib/landingNavigation";
 
 const navigationLinks = [
   { label: "Product", href: "#product" },
@@ -908,6 +909,9 @@ export default function LandingPage() {
             </a>
             <a
               href="/landing/privacy"
+              onClick={(event) =>
+                handleLandingNavigation(event, "/landing/privacy")
+              }
               className={`transition-colors ${
                 isDarkMode ? "hover:text-white" : "hover:text-slate-900"
               }`}
@@ -916,6 +920,9 @@ export default function LandingPage() {
             </a>
             <a
               href="/landing/terms"
+              onClick={(event) =>
+                handleLandingNavigation(event, "/landing/terms")
+              }
               className={`transition-colors ${
                 isDarkMode ? "hover:text-white" : "hover:text-slate-900"
               }`}
