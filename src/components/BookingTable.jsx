@@ -115,14 +115,14 @@ export default function BookingTable({
       : "No scheduled records.";
 
     const body = [
-      "Hello Team,",
+      "Hi Team,",
       "",
-      "Here's the latest schedule overview:",
+      "Here's our colleagues latest updates:",
       "",
       scheduleSummary,
       "",
-      "Best regards,",
-      "My Staff Manager",
+      
+      
     ].join("\n");
 
     return { subject, body };
