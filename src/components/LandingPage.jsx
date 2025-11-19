@@ -227,18 +227,14 @@ export default function LandingPage() {
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
           <a
             href="https://offyse.com"
-            className={`flex items-center gap-2 text-lg font-semibold tracking-tight ${
-              isDarkMode ? "text-white" : "text-slate-900"
+            className={`flex items-center gap-2 text-2xl font-bold ${
+              isDarkMode ? "text-purple-200" : "text-purple-800"
             }`}
+            aria-label="Offyse home"
           >
-            <span
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-xl font-bold ${
-                isDarkMode ? "bg-purple-500/80 text-white" : "bg-purple-500 text-white"
-              }`}
-            >
-              O
+            <span className="text-lg sm:text-xl" aria-hidden>
+              Offyse 🏢
             </span>
-            Offyse
           </a>
           <div
             className={`hidden items-center gap-8 text-sm font-medium md:flex ${
@@ -887,18 +883,11 @@ export default function LandingPage() {
         >
           <div
             className={`flex items-center gap-3 ${
-              isDarkMode ? "text-white" : "text-slate-900"
+              isDarkMode ? "text-purple-200" : "text-purple-800"
             }`}
           >
-            <span
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold ${
-                isDarkMode ? "bg-purple-500/80 text-white" : "bg-purple-500 text-white"
-              }`}
-            >
-              O
-            </span>
             <div>
-              <p className="font-semibold">Offyse</p>
+              <p className="text-lg font-bold leading-none">Offyse 🏢</p>
               <p
                 className={`text-xs ${
                   isDarkMode ? "text-slate-400" : "text-slate-500"
