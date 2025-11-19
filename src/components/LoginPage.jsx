@@ -107,7 +107,7 @@ export default function LoginPage({
             </p>
             <p className="mt-3 text-sm">
               <a
-                href="?landing=1"
+                href="offyse.com"
                 className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-300 dark:hover:text-purple-200"
               >
                 New to Offyse? Learn more about this app
