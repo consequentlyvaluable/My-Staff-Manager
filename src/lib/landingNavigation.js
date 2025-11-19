@@ -32,7 +32,7 @@ export const handleLandingNavigation = (event, targetPath) => {
       new PopStateEvent("popstate", { state: window.history.state })
     );
     return true;
-  } catch (error) {
+  } catch {
     window.location.assign(targetPath);
     return true;
   }
