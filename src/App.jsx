@@ -11,7 +11,6 @@ import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
-import LandingLegalPage from "./components/LandingLegalPage";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -132,7 +131,7 @@ const shouldRenderLandingPage = () => {
 
 const resolveLandingRoute = () => {
   if (typeof window === "undefined") {
-    return { renderLanding: false, variant: "landing" };
+    return { renderLanding: false };
   }
 
   const rawPathname = window.location.pathname ?? "";
@@ -143,22 +142,14 @@ const resolveLandingRoute = () => {
     trimmedPathname === target || trimmedPathname.startsWith(`${target}/`);
 
   if (matchesPath("/login")) {
-    return { renderLanding: false, variant: "landing" };
-  }
-
-  if (matchesPath("/landing/privacy") || matchesPath("/privacy")) {
-    return { renderLanding: true, variant: "privacy" };
-  }
-
-  if (matchesPath("/landing/terms") || matchesPath("/terms")) {
-    return { renderLanding: true, variant: "terms" };
+    return { renderLanding: false };
   }
 
   if (shouldRenderLandingPage()) {
-    return { renderLanding: true, variant: "landing" };
+    return { renderLanding: true };
   }
 
-  return { renderLanding: false, variant: "landing" };
+  return { renderLanding: false };
 };
 
 const buildEmployeeLookup = (list) => {
@@ -2169,9 +2160,6 @@ export default function App() {
   }, []);
 
   if (landingState.renderLanding) {
-    if (landingState.variant === "privacy" || landingState.variant === "terms") {
-      return <LandingLegalPage variant={landingState.variant} />;
-    }
     return <LandingPage />;
   }
 

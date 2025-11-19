@@ -921,28 +921,6 @@ export default function LandingPage() {
             >
               Contact
             </a>
-            <a
-              href="/landing/privacy"
-              onClick={(event) =>
-                handleLandingNavigation(event, "/landing/privacy")
-              }
-              className={`transition-colors ${
-                isDarkMode ? "hover:text-white" : "hover:text-slate-900"
-              }`}
-            >
-              Privacy
-            </a>
-            <a
-              href="/landing/terms"
-              onClick={(event) =>
-                handleLandingNavigation(event, "/landing/terms")
-              }
-              className={`transition-colors ${
-                isDarkMode ? "hover:text-white" : "hover:text-slate-900"
-              }`}
-            >
-              Terms
-            </a>
             <span className={isDarkMode ? "text-slate-500" : "text-slate-500"}>
               © {new Date().getFullYear()} Offyse.com
             </span>
