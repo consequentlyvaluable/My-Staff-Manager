@@ -280,14 +280,25 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={toggleTheme}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border text-lg transition ${
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow transition ${
                 isDarkMode
-                  ? "border-slate-500/60 text-slate-100 hover:border-indigo-400 hover:text-white"
-                  : "border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600"
+                  ? "bg-slate-800/80 text-slate-100 shadow-black/40 hover:bg-slate-800"
+                  : "bg-white/80 text-slate-700 shadow-indigo-100 hover:bg-white"
               }`}
-              aria-label={isDarkMode ? "Activate light mode" : "Activate dark mode"}
+              aria-pressed={isDarkMode}
             >
-              {isDarkMode ? "☀️" : "🌙"}
+              <span
+                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                  isDarkMode ? "bg-indigo-500" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    isDarkMode ? "translate-x-5" : "translate-x-1"
+                  }`}
+                />
+              </span>
+              <span>{isDarkMode ? "Dark" : "Light"} Mode</span>
             </button>
           </div>
         </nav>
