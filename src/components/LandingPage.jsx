@@ -194,8 +194,10 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
-        isDarkMode ? "bg-slate-950 text-slate-100" : "bg-white text-slate-900"
+      className={`min-h-screen bg-gradient-to-br transition-colors duration-300 ${
+        isDarkMode
+          ? "from-gray-900 via-gray-950 to-purple-950 text-slate-100"
+          : "from-purple-100 via-white to-purple-200 text-slate-900"
       }`}
     >
       <header className="relative overflow-hidden">
@@ -204,14 +206,14 @@ export default function LandingPage() {
             className={`absolute inset-0 bg-gradient-to-b transition-colors duration-300 ${
               isDarkMode
                 ? "from-slate-900 via-slate-950 to-slate-900"
-                : "from-indigo-50 via-white to-indigo-100"
+                : "from-purple-50 via-white to-purple-100"
             }`}
           />
           <div
             className={`absolute inset-x-0 -top-1/2 h-[520px] transition-opacity duration-300 ${
               isDarkMode
-                ? "bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.45),transparent_65%)]"
-                : "bg-[radial-gradient(circle_at_top,rgba(79,70,229,0.35),transparent_60%)]"
+                ? "bg-[radial-gradient(circle_at_top,rgba(147,51,234,0.45),transparent_65%)]"
+                : "bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.35),transparent_60%)]"
             }`}
           />
           <div
@@ -231,7 +233,7 @@ export default function LandingPage() {
           >
             <span
               className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-xl font-bold ${
-                isDarkMode ? "bg-indigo-500/80 text-white" : "bg-indigo-500 text-white"
+                isDarkMode ? "bg-purple-500/80 text-white" : "bg-purple-500 text-white"
               }`}
             >
               O
@@ -261,8 +263,8 @@ export default function LandingPage() {
               onClick={(event) => handleLandingNavigation(event, "/login")}
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 isDarkMode
-                  ? "border-slate-500/60 text-slate-200 hover:border-indigo-400 hover:text-white"
-                  : "border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600"
+                  ? "border-slate-500/60 text-slate-200 hover:border-purple-400 hover:text-white"
+                  : "border-slate-200 text-slate-700 hover:border-purple-400 hover:text-purple-600"
               }`}
             >
               Login
@@ -271,8 +273,8 @@ export default function LandingPage() {
               href="mailto:hello@offyse.com"
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 isDarkMode
-                  ? "bg-indigo-500 text-white hover:bg-indigo-400"
-                  : "bg-indigo-600 text-white hover:bg-indigo-500"
+                  ? "bg-purple-500 text-white hover:bg-purple-400"
+                  : "bg-purple-600 text-white hover:bg-purple-500"
               }`}
             >
               Start free trial
@@ -283,13 +285,13 @@ export default function LandingPage() {
               className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow transition ${
                 isDarkMode
                   ? "bg-slate-800/80 text-slate-100 shadow-black/40 hover:bg-slate-800"
-                  : "bg-white/80 text-slate-700 shadow-indigo-100 hover:bg-white"
+                  : "bg-white/80 text-slate-700 shadow-purple-100 hover:bg-white"
               }`}
               aria-pressed={isDarkMode}
             >
               <span
                 className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                  isDarkMode ? "bg-indigo-500" : "bg-slate-300"
+                  isDarkMode ? "bg-purple-500" : "bg-slate-300"
                 }`}
               >
                 <span
@@ -307,8 +309,8 @@ export default function LandingPage() {
             <span
               className={`inline-flex items-center gap-2 rounded-full border px-4 py-1 text-xs uppercase tracking-[0.2em] ${
                 isDarkMode
-                  ? "border-indigo-400/30 bg-indigo-500/10 text-indigo-200"
-                  : "border-indigo-200 bg-indigo-50 text-indigo-600"
+                  ? "border-purple-400/30 bg-purple-500/10 text-purple-200"
+                  : "border-purple-200 bg-purple-50 text-purple-600"
               }`}
             >
               Team-friendly time off management
@@ -333,8 +335,8 @@ export default function LandingPage() {
               href="https://app.offyse.com/signup"
               className={`inline-flex items-center justify-center rounded-full px-8 py-3 text-base font-semibold shadow-lg transition ${
                 isDarkMode
-                  ? "bg-indigo-500 text-white shadow-indigo-500/30 hover:bg-indigo-400"
-                  : "bg-indigo-600 text-white shadow-indigo-500/20 hover:bg-indigo-500"
+                  ? "bg-purple-500 text-white shadow-purple-500/30 hover:bg-purple-400"
+                  : "bg-purple-600 text-white shadow-purple-500/20 hover:bg-purple-500"
               }`}
             >
               Start your 14-day trial
@@ -344,7 +346,7 @@ export default function LandingPage() {
               className={`inline-flex items-center justify-center rounded-full border px-8 py-3 text-base font-semibold transition ${
                 isDarkMode
                   ? "border-transparent bg-white/10 text-white hover:bg-white/20"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-indigo-50"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-purple-50"
               }`}
             >
               Book a walkthrough
@@ -362,7 +364,7 @@ export default function LandingPage() {
               >
                 <p
                   className={`text-sm uppercase tracking-wide ${
-                    isDarkMode ? "text-indigo-200/80" : "text-indigo-600"
+                    isDarkMode ? "text-purple-200/80" : "text-purple-600"
                   }`}
                 >
                   {metric.label}
@@ -424,8 +426,8 @@ export default function LandingPage() {
                 <span
                   className={`mt-1 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full text-lg ${
                     isDarkMode
-                      ? "bg-indigo-500/20 text-indigo-100"
-                      : "bg-indigo-100 text-indigo-600"
+                      ? "bg-purple-500/20 text-purple-100"
+                      : "bg-purple-100 text-purple-600"
                   }`}
                 >
                   ✓
@@ -436,8 +438,8 @@ export default function LandingPage() {
                 <span
                   className={`mt-1 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full text-lg ${
                     isDarkMode
-                      ? "bg-indigo-500/20 text-indigo-100"
-                      : "bg-indigo-100 text-indigo-600"
+                      ? "bg-purple-500/20 text-purple-100"
+                      : "bg-purple-100 text-purple-600"
                   }`}
                 >
                   ✓
@@ -448,8 +450,8 @@ export default function LandingPage() {
                 <span
                   className={`mt-1 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full text-lg ${
                     isDarkMode
-                      ? "bg-indigo-500/20 text-indigo-100"
-                      : "bg-indigo-100 text-indigo-600"
+                      ? "bg-purple-500/20 text-purple-100"
+                      : "bg-purple-100 text-purple-600"
                   }`}
                 >
                   ✓
@@ -464,8 +466,8 @@ export default function LandingPage() {
                 key={feature.title}
                 className={`rounded-3xl border p-6 transition ${
                   isDarkMode
-                    ? "border-white/5 bg-white/5 backdrop-blur hover:border-indigo-400/60 hover:bg-indigo-500/10"
-                    : "border-slate-200 bg-white shadow-sm hover:border-indigo-300 hover:bg-indigo-50"
+                    ? "border-white/5 bg-white/5 backdrop-blur hover:border-purple-400/60 hover:bg-purple-500/10"
+                    : "border-slate-200 bg-white shadow-sm hover:border-purple-300 hover:bg-purple-50"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -528,7 +530,7 @@ export default function LandingPage() {
                 >
                   <span
                     className={`absolute -top-6 right-4 text-8xl font-black ${
-                      isDarkMode ? "text-indigo-500/10" : "text-indigo-200"
+                      isDarkMode ? "text-purple-500/10" : "text-purple-200"
                     }`}
                   >
                     {step.step}
@@ -536,8 +538,8 @@ export default function LandingPage() {
                   <div
                     className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold ${
                       isDarkMode
-                        ? "bg-indigo-500/20 text-indigo-100"
-                        : "bg-indigo-100 text-indigo-600"
+                        ? "bg-purple-500/20 text-purple-100"
+                        : "bg-purple-100 text-purple-600"
                     }`}
                   >
                     {step.step}
@@ -591,8 +593,8 @@ export default function LandingPage() {
                 href="mailto:hello@offyse.com"
                 className={`inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition ${
                   isDarkMode
-                    ? "bg-indigo-500 text-white hover:bg-indigo-400"
-                    : "bg-indigo-600 text-white hover:bg-indigo-500"
+                    ? "bg-purple-500 text-white hover:bg-purple-400"
+                    : "bg-purple-600 text-white hover:bg-purple-500"
                 }`}
               >
                 Try Offyse for free
@@ -672,8 +674,8 @@ export default function LandingPage() {
                   className={`relative flex h-full flex-col rounded-3xl border p-6 transition ${
                     plan.highlighted
                       ? isDarkMode
-                        ? "border-indigo-400/70 bg-indigo-500/15 shadow-lg shadow-indigo-500/30"
-                        : "border-indigo-200 bg-indigo-50 shadow-lg shadow-indigo-200/60"
+                        ? "border-purple-400/70 bg-purple-500/15 shadow-lg shadow-purple-500/30"
+                        : "border-purple-200 bg-purple-50 shadow-lg shadow-purple-200/60"
                       : isDarkMode
                       ? "border-white/5 bg-white/5 backdrop-blur"
                       : "border-slate-200 bg-white shadow-sm"
@@ -683,8 +685,8 @@ export default function LandingPage() {
                     <span
                       className={`absolute right-6 top-6 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                         isDarkMode
-                          ? "bg-indigo-500 text-white"
-                          : "bg-indigo-600 text-white"
+                          ? "bg-purple-500 text-white"
+                          : "bg-purple-600 text-white"
                       }`}
                     >
                       Most popular
@@ -728,8 +730,8 @@ export default function LandingPage() {
                         <span
                           className={`mt-1 inline-flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs ${
                             isDarkMode
-                              ? "bg-indigo-500/20 text-indigo-100"
-                              : "bg-indigo-100 text-indigo-600"
+                              ? "bg-purple-500/20 text-purple-100"
+                              : "bg-purple-100 text-purple-600"
                           }`}
                         >
                           ✓
@@ -743,11 +745,11 @@ export default function LandingPage() {
                     className={`mt-8 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition ${
                       plan.highlighted
                         ? isDarkMode
-                          ? "bg-white text-slate-900 hover:bg-indigo-100"
-                          : "bg-indigo-600 text-white hover:bg-indigo-500"
+                          ? "bg-white text-slate-900 hover:bg-purple-100"
+                          : "bg-purple-600 text-white hover:bg-purple-500"
                         : isDarkMode
-                        ? "bg-indigo-500 text-white hover:bg-indigo-400"
-                        : "bg-indigo-600 text-white hover:bg-indigo-500"
+                        ? "bg-purple-500 text-white hover:bg-purple-400"
+                        : "bg-purple-600 text-white hover:bg-purple-500"
                     }`}
                   >
                     {plan.cta.label}
@@ -784,8 +786,8 @@ export default function LandingPage() {
                   href="mailto:hello@offyse.com"
                   className={`ml-2 underline decoration-2 underline-offset-4 ${
                     isDarkMode
-                      ? "text-indigo-300 decoration-indigo-500/60"
-                      : "text-indigo-600 decoration-indigo-300"
+                      ? "text-purple-300 decoration-purple-500/60"
+                      : "text-purple-600 decoration-purple-300"
                   }`}
                 >
                   hello@offyse.com
@@ -827,8 +829,8 @@ export default function LandingPage() {
           <div
             className={`rounded-[32px] border p-10 text-center shadow-lg transition ${
               isDarkMode
-                ? "border-indigo-500/40 bg-indigo-500/20 shadow-indigo-500/30"
-                : "border-indigo-200 bg-indigo-50 shadow-indigo-200/60"
+                ? "border-purple-500/40 bg-purple-500/20 shadow-purple-500/30"
+                : "border-purple-200 bg-purple-50 shadow-purple-200/60"
             }`}
           >
             <h2
@@ -840,7 +842,7 @@ export default function LandingPage() {
             </h2>
             <p
               className={`mt-4 text-lg ${
-                isDarkMode ? "text-indigo-100" : "text-indigo-700"
+                isDarkMode ? "text-purple-100" : "text-purple-700"
               }`}
             >
               Launch Offyse in minutes and keep everyone aligned on who is out, when, and why. Your first 14 days are on us.
@@ -850,8 +852,8 @@ export default function LandingPage() {
                 href="mailto:hello@offyse.com"
                 className={`inline-flex items-center justify-center rounded-full px-8 py-3 text-base font-semibold transition ${
                   isDarkMode
-                    ? "bg-white text-slate-900 hover:bg-indigo-100"
-                    : "bg-indigo-600 text-white hover:bg-indigo-500"
+                    ? "bg-white text-slate-900 hover:bg-purple-100"
+                    : "bg-purple-600 text-white hover:bg-purple-500"
                 }`}
               >
                 Create your account
@@ -861,7 +863,7 @@ export default function LandingPage() {
                 className={`inline-flex items-center justify-center rounded-full border px-8 py-3 text-base font-semibold transition ${
                   isDarkMode
                     ? "border-white/70 text-white hover:border-white hover:bg-white/10"
-                    : "border-indigo-200 text-indigo-700 hover:border-indigo-400 hover:bg-indigo-100"
+                    : "border-purple-200 text-purple-700 hover:border-purple-400 hover:bg-purple-100"
                 }`}
               >
                 Talk to our team
@@ -890,7 +892,7 @@ export default function LandingPage() {
           >
             <span
               className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold ${
-                isDarkMode ? "bg-indigo-500/80 text-white" : "bg-indigo-500 text-white"
+                isDarkMode ? "bg-purple-500/80 text-white" : "bg-purple-500 text-white"
               }`}
             >
               O
