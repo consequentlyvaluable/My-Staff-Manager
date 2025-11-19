@@ -101,6 +101,10 @@ const shouldRenderLandingPage = () => {
     return true;
   }
 
+  if (hostname === "offyse.com" || hostname === "www.offyse.com") {
+    return true;
+  }
+
   if (
     hostname.startsWith("landing.") &&
     (hostname.endsWith(".localhost") ||
@@ -137,6 +141,10 @@ const resolveLandingRoute = () => {
 
   const matchesPath = (target) =>
     trimmedPathname === target || trimmedPathname.startsWith(`${target}/`);
+
+  if (matchesPath("/login")) {
+    return { renderLanding: false, variant: "landing" };
+  }
 
   if (matchesPath("/landing/privacy") || matchesPath("/privacy")) {
     return { renderLanding: true, variant: "privacy" };
