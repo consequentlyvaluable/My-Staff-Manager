@@ -115,19 +115,22 @@ const faqs = [
 
 const pricingPlans = [
   {
-    name: "Starter",
-    price: "$4",
-    cadence: "per active employee / month",
-    description:
-      "Core approval workflows, shared calendar, and unlimited requests for small but mighty teams.",
+    name: "Free",
+    price: "$0",
+    cadence: "up to 50 employees",
+    description: "All features included for growing teams getting started.",
     features: [
       "Automated approval routing",
       "Google & Outlook calendar sync",
       "Email notifications & reminders",
       "Self-serve employee portal",
+      "Advanced capacity forecasting",
+      "Team-level quotas & alerts",
+      "Slack & Teams notifications",
+      "Priority email support",
     ],
     cta: {
-      label: "Start free trial",
+      label: "Start for free",
       href: "mailto:hello@offyse.com",
     },
     highlighted: false,
@@ -135,10 +138,13 @@ const pricingPlans = [
   {
     name: "Scale",
     price: "$7",
-    cadence: "per active employee / month",
-    description:
-      "Advanced analytics, role-based permissions, and integrations built for multi-team organizations.",
+    cadence: "per active employee / month (unlimited employees)",
+    description: "Everything in Free with unlimited employee seats for larger organizations.",
     features: [
+      "Automated approval routing",
+      "Google & Outlook calendar sync",
+      "Email notifications & reminders",
+      "Self-serve employee portal",
       "Advanced capacity forecasting",
       "Team-level quotas & alerts",
       "Slack & Teams notifications",
@@ -660,7 +666,7 @@ export default function LandingPage() {
                   isDarkMode ? "text-slate-200" : "text-slate-600"
                 }`}
               >
-                Every plan includes unlimited requests, approvals, and employees in multiple time zones. Upgrade when you need deeper insights and control.
+                Both plans include every feature—automations, calendars, alerts, and support. Choose Free for up to 50 employees or Scale for unlimited seats.
               </p>
             </div>
             <div className="mt-12 grid gap-6 md:grid-cols-2">
