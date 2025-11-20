@@ -13,6 +13,7 @@ const formatDateTime = (value) => {
 
 export default function BookingTable({
   records,
+  workflowDecisions = {},
   search,
   setSearch,
   sort,
@@ -226,7 +227,7 @@ export default function BookingTable({
               {sort.name === "desc" && " ▼"}
             </th>
             <th className="p-2 text-center">Type</th>
-            <th className="p-2 text-center cursor-pointer" onClick={() => toggleSort("start")}> 
+            <th className="p-2 text-center cursor-pointer" onClick={() => toggleSort("start")}>
               Start
               {sort.start === "asc" && " ▲"}
               {sort.start === "desc" && " ▼"}
@@ -236,6 +237,7 @@ export default function BookingTable({
               {sort.end === "asc" && " ▲"}
               {sort.end === "desc" && " ▼"}
             </th>
+            <th className="p-2 text-center">Status</th>
             <th className="p-2 text-center">Actions</th>
           </tr>
         </thead>
@@ -266,6 +268,28 @@ export default function BookingTable({
                 <td className="border border-gray-100 p-2 text-center text-gray-700 dark:border-gray-600 dark:text-gray-100">
                   {formatDateTime(r.end)}
                 </td>
+                <td className="border border-gray-100 p-2 text-center text-gray-700 dark:border-gray-600 dark:text-gray-100">
+                  {workflowDecisions[r.id] ? (
+                    <span
+                      className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                        workflowDecisions[r.id].status === "auto_approved"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100"
+                          : workflowDecisions[r.id].status === "declined_quota"
+                          ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100"
+                          : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-100"
+                      }`}
+                      title={workflowDecisions[r.id].reason}
+                    >
+                      {workflowDecisions[r.id].status === "auto_approved"
+                        ? "Auto-approved"
+                        : workflowDecisions[r.id].status === "declined_quota"
+                        ? "Declined"
+                        : "Needs review"}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">Pending</span>
+                  )}
+                </td>
                 <td className="border border-gray-100 p-2 text-center space-x-2 dark:border-gray-600">
                   <button
                     onClick={() => allowEdit && handleEditClick(r)}
@@ -290,7 +314,7 @@ export default function BookingTable({
 
           {visibleRecords.length === 0 && (
             <tr>
-              <td colSpan="5" className="text-center text-gray-500 p-4 dark:text-gray-300">
+              <td colSpan="6" className="text-center text-gray-500 p-4 dark:text-gray-300">
                 {showPastBookings ? "No matching records" : "No upcoming bookings"}
               </td>
             </tr>
