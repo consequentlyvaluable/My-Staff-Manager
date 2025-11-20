@@ -1,4 +1,4 @@
-import { addDays, eachDayOfInterval, isAfter, isBefore, isEqual } from "date-fns";
+import { addDays, eachDayOfInterval, isAfter, isBefore } from "date-fns";
 
 export const defaultAutomationSettings = {
   quotas: {
