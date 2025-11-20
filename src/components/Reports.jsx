@@ -146,7 +146,7 @@ export default function Reports({ records }) {
             }`
           : "Add your first booking to get started",
       icon: "🗂️",
-      gradient: "from-sky-500/20 via-sky-500/10 to-sky-500/0",
+      gradient: "from-indigo-500/20 via-indigo-500/10 to-indigo-500/0",
     },
     {
       title: "Starting Soon",

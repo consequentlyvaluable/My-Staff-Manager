@@ -107,7 +107,7 @@ export default function AutomationPanel({
                 </span>
               )}
               {settings.notifications.teams && (
-                <span className="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold text-sky-800 dark:bg-sky-900/40 dark:text-sky-100">
+                <span className="rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-100">
                   Teams
                 </span>
               )}
