@@ -1961,11 +1961,6 @@ function StaffManagerApp() {
                 )}
               </div>
               <div className="md:col-span-3 space-y-6">
-                <AutomationPanel
-                  summary={workflowSummary}
-                  settings={automationSettings}
-                  forecast={capacityForecast}
-                />
                 <CalendarView
                   records={records}
                   currentDate={currentDate}
@@ -2006,6 +2001,26 @@ function StaffManagerApp() {
             </div>
           )}
           {currentPage === "reports" && <Reports records={records} />}
+          {currentPage === "automation" && (
+            <div className="space-y-6">
+              <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-colors duration-300 dark:border-slate-700/60 dark:bg-slate-900/70 dark:shadow-black/30">
+                <p className="text-sm font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Automation
+                </p>
+                <h2 className="mt-1 text-3xl font-semibold text-slate-800 dark:text-slate-100">
+                  Workflow Automation
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
+                  Review automated approvals, sync coverage with calendars, and monitor capacity alerts in one focused workspace.
+                </p>
+              </div>
+              <AutomationPanel
+                summary={workflowSummary}
+                settings={automationSettings}
+                forecast={capacityForecast}
+              />
+            </div>
+          )}
         </main>
       </div>
       {calendarEditingId && calendarEditingRecord && (
