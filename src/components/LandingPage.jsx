@@ -36,19 +36,19 @@ const featureHighlights = [
 const metrics = [
   {
     label: "Admin time you reclaim",
-    value: "Save time every single week",
+    value: "Less Admin / More Focus",
     detail:
       "",
   },
   {
     label: "Visibility you gain",
-    value: "1 source of truth",
+    value: "1 Source of Truth - Better Co-ordination",
     detail:
       "",
   },
   {
     label: "Adoption you can expect",
-    value: "Under a week",
+    value: "Painless, Seemless",
     detail:
       "",
   },
@@ -330,21 +330,21 @@ export default function LandingPage() {
                   : "border-purple-200 bg-purple-50 text-purple-600"
               }`}
             >
-              Team-friendly time off management
+              Team friendly time away management
             </span>
             <h1
               className={`mt-8 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl ${
                 isDarkMode ? "text-white" : "text-slate-900"
               }`}
             >
-              Give every team clear visibility into time away
+              Clear Visibility - For Every Team
             </h1>
             <p
               className={`mt-6 text-lg leading-8 md:text-xl ${
                 isDarkMode ? "text-slate-200" : "text-slate-600"
               }`}
             >
-              Offyse keeps schedules aligned, approvals fast, and employees supported. No more spreadsheets, no more guesswork—just confident planning across hybrid and distributed teams.
+              Offyse keeps schedules aligned. No more spreadsheets, no more guesswork — just confident planning for teams.
             </p>
           </div>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
