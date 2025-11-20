@@ -152,6 +152,23 @@ const resolveLandingRoute = () => {
   return { renderLanding: false };
 };
 
+const resolveBranding = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hostname = window.location.hostname?.toLowerCase?.() ?? "";
+
+  if (hostname === "aramark.offyse.com") {
+    return {
+      id: "aramark",
+      name: "Aramark",
+    };
+  }
+
+  return null;
+};
+
 const buildEmployeeLookup = (list) => {
   const lookup = new Map();
   for (const entry of list) {
@@ -495,6 +512,7 @@ function StaffManagerApp() {
   const [changePasswordError, setChangePasswordError] = useState("");
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
   const [toasts, setToasts] = useState([]);
+  const branding = useMemo(() => resolveBranding(), []);
   const [calendarEditingId, setCalendarEditingId] = useState(null);
   const [calendarPopoverPosition, setCalendarPopoverPosition] = useState({
     top: 0,
@@ -1815,6 +1833,7 @@ function StaffManagerApp() {
           onPasswordReset={handlePasswordReset}
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+          branding={branding}
         />
         <ToastStack toasts={toasts} onDismiss={dismissToast} />
       </>
