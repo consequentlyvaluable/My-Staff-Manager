@@ -36,21 +36,21 @@ const featureHighlights = [
 const metrics = [
   {
     label: "Admin time you reclaim",
-    value: "5+ hours/week",
+    value: "Save time every single week",
     detail:
-      "Automated routing, reminders, and calendar syncs keep teams out of email back-and-forth.",
+      "",
   },
   {
     label: "Visibility you gain",
     value: "1 source of truth",
     detail:
-      "Everyone plans from the same calendar for vacations, holidays, and staffing guardrails—no spreadsheets.",
+      "",
   },
   {
     label: "Adoption you can expect",
-    value: "Live in under a week",
+    value: "Under a week",
     detail:
-      "Guided onboarding, self-serve requests, and automated nudges help teams start using Offyse immediately.",
+      "",
   },
 ];
 
