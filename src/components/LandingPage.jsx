@@ -35,19 +35,22 @@ const featureHighlights = [
 
 const metrics = [
   {
-    label: "Admin hours saved",
-    value: "32%",
-    detail: "Average reduction in manual coordination after the first month.",
+    label: "Admin time you reclaim",
+    value: "5+ hours/week",
+    detail:
+      "Automated routing, reminders, and calendar syncs keep teams out of email back-and-forth.",
   },
   {
-    label: "Teams onboarded",
-    value: "180+",
-    detail: "Across agencies, consultancies, and distributed product organizations.",
+    label: "Visibility you gain",
+    value: "1 source of truth",
+    detail:
+      "Everyone plans from the same calendar for vacations, holidays, and staffing guardrails—no spreadsheets.",
   },
   {
-    label: "Employee adoption",
-    value: "98%",
-    detail: "Staff members actively submitting requests within the first two weeks.",
+    label: "Adoption you can expect",
+    value: "Live in under a week",
+    detail:
+      "Guided onboarding, self-serve requests, and automated nudges help teams start using Offyse immediately.",
   },
 ];
 
