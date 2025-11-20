@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { handleLandingNavigation } from "../lib/landingNavigation";
 import approvalsScreenshot from "../assets/screenshot-approvals.svg";
-import calendarScreenshot from "../assets/screenshot-calendar.svg";
+import calendarScreenshot from "../assets/screenshot-calendar.png";
 import requestScreenshot from "../assets/screenshot-request.svg";
 
 const navigationLinks = [
