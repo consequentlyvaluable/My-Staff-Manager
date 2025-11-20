@@ -99,7 +99,7 @@ const faqs = [
   {
     question: "Is there a minimum team size?",
     answer:
-      "No minimums. We support growing teams from 5 to 5000 employees with the same intuitive experience and permission controls.",
+      "No minimums. The app provides the same intuitive user friendly experience whether you're a team of 2 or more.",
   },
   {
     question: "Do employees need training?",
@@ -334,7 +334,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="https://app.offyse.com/signup"
+              href="hello@offyse.com"
               className={`inline-flex items-center justify-center rounded-full px-8 py-3 text-base font-semibold shadow-lg transition ${
                 isDarkMode
                   ? "bg-purple-500 text-white shadow-purple-500/30 hover:bg-purple-400"
@@ -847,7 +847,7 @@ export default function LandingPage() {
                 isDarkMode ? "text-purple-100" : "text-purple-700"
               }`}
             >
-              Launch Offyse in minutes and keep everyone aligned on who is out, when, and why. Your first 14 days are on us.
+              Launch Offyse in minutes and keep everyone aligned on who is out, when, and why.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a
