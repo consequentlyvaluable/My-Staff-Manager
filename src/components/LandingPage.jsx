@@ -349,7 +349,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="hello@offyse.com"
+              href="mailto:hello@offyse.com"
               className={`inline-flex items-center justify-center rounded-full px-8 py-3 text-base font-semibold shadow-lg transition ${
                 isDarkMode
                   ? "bg-purple-500 text-white shadow-purple-500/30 hover:bg-purple-400"
