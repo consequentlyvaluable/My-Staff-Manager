@@ -8,7 +8,7 @@ const ACTION_ICONS = {
 
 const ACTION_ACCENTS = {
   created: "border-emerald-500/60 bg-emerald-50/90 dark:border-emerald-400/60 dark:bg-emerald-500/10",
-  updated: "border-sky-500/60 bg-sky-50/90 dark:border-sky-400/60 dark:bg-sky-500/10",
+  updated: "border-purple-500/60 bg-purple-50/90 dark:border-purple-400/60 dark:bg-purple-500/10",
   deleted: "border-rose-500/60 bg-rose-50/90 dark:border-rose-400/60 dark:bg-rose-500/10",
 };
 
@@ -59,7 +59,7 @@ function ToastMessage({ toast, onDismiss }) {
         <button
           type="button"
           onClick={() => onDismiss(toast.id)}
-          className="ml-2 rounded-full p-1 text-slate-500 transition hover:bg-slate-900/5 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+          className="ml-2 rounded-full p-1 text-slate-500 transition hover:bg-slate-900/5 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
           aria-label="Dismiss notification"
         >
           <svg

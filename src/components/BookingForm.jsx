@@ -224,13 +224,13 @@ export default function BookingForm({
       }`}
     >
       <div
-        className="absolute inset-x-6 top-0 h-24 rounded-b-full bg-gradient-to-br from-sky-500/10 via-transparent to-indigo-500/10 blur-2xl"
+        className="absolute inset-x-6 top-0 h-24 rounded-b-full bg-gradient-to-br from-purple-500/10 via-transparent to-fuchsia-500/10 blur-2xl"
         aria-hidden="true"
       />
 
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-widest text-sky-500 dark:text-sky-300">
+          <p className="text-xs uppercase tracking-widest text-purple-600 dark:text-purple-300">
             {editingId ? "Currently editing" : "Create New"}
           </p>
           <h2 className="mt-1 text-2xl font-semibold text-slate-800 dark:text-slate-100">
@@ -240,7 +240,7 @@ export default function BookingForm({
         {editingId && (
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-sky-200 hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-purple-200 hover:text-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={cancelEdit}
             disabled={isDisabled}
           >
@@ -302,7 +302,7 @@ export default function BookingForm({
                   : undefined
               }
               placeholder="Search by name"
-              className="w-full rounded-xl border border-slate-200 bg-white/90 py-2.5 pl-9 pr-11 text-sm text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+              className="w-full rounded-xl border border-slate-200 bg-white/90 py-2.5 pl-9 pr-11 text-sm text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-purple-500 dark:focus:ring-purple-500/30"
               value={employeeQuery}
               onChange={(event) => {
                 const nextValue = event.target.value;
@@ -327,7 +327,7 @@ export default function BookingForm({
             {form.name && !isDisabled && (
               <button
                 type="button"
-                className="absolute inset-y-0 right-8 flex items-center text-slate-300 transition hover:text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:text-slate-500 dark:hover:text-slate-300"
+                className="absolute inset-y-0 right-8 flex items-center text-slate-300 transition hover:text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 dark:text-slate-500 dark:hover:text-slate-300"
                 onClick={() => {
                   setEmployeeQuery("");
                   setForm({ ...form, name: "" });
@@ -340,7 +340,7 @@ export default function BookingForm({
             )}
             <button
               type="button"
-              className="absolute inset-y-0 right-2 flex items-center text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:text-slate-500 dark:hover:text-slate-300"
+              className="absolute inset-y-0 right-2 flex items-center text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 dark:text-slate-500 dark:hover:text-slate-300"
               onClick={() => {
                 if (isDisabled) {
                   return;
@@ -377,17 +377,17 @@ export default function BookingForm({
                             role="option"
                             id={`${employeeListId}-option-${index}`}
                             aria-selected={isSelected}
-                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 ${
                               isHighlighted
-                                ? "bg-sky-500/10 text-sky-700 dark:bg-sky-500/20 dark:text-sky-100"
+                                ? "bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-100"
                                 : "text-slate-600 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70"
-                            } ${isSelected ? "ring-1 ring-sky-400 dark:ring-sky-500" : ""}`}
+                            } ${isSelected ? "ring-1 ring-purple-400 dark:ring-purple-500" : ""}`}
                             onMouseEnter={() => setHighlightedIndex(index)}
                             onMouseLeave={() => setHighlightedIndex(-1)}
                             onClick={() => handleEmployeeSelect(employeeName)}
                           >
                             <span>{employeeName}</span>
-                            {isSelected && <span className="text-xs text-sky-500 dark:text-sky-300">Selected</span>}
+                            {isSelected && <span className="text-xs text-purple-600 dark:text-purple-300">Selected</span>}
                           </button>
                         </li>
                       );
@@ -410,7 +410,7 @@ export default function BookingForm({
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Booking type</label>
           <div className="relative">
             <select
-              className="w-full appearance-none rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+              className="w-full appearance-none rounded-xl border border-slate-200 bg-white/80 py-2.5 pl-3 pr-10 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-purple-500 dark:focus:ring-purple-500/30"
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               disabled={isDisabled}
@@ -449,7 +449,7 @@ export default function BookingForm({
               onChange={handleAllDayToggle}
               disabled={isDisabled}
             />
-            <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-sky-500 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-500 dark:bg-slate-700 dark:peer-checked:bg-sky-500/80"></span>
+            <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-purple-500 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-purple-500 dark:bg-slate-700 dark:peer-checked:bg-purple-500/80"></span>
             <span className="absolute left-1 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-5 peer-checked:bg-white dark:bg-slate-300"></span>
           </label>
         </div>
@@ -462,7 +462,7 @@ export default function BookingForm({
             </label>
             <input
               type={isAllDay ? "date" : "datetime-local"}
-              className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+              className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-purple-500 dark:focus:ring-purple-500/30"
               value={startInputValue}
               onChange={(e) => {
                 const nextValue = e.target.value;
@@ -482,7 +482,7 @@ export default function BookingForm({
             </label>
             <input
               type={isAllDay ? "date" : "datetime-local"}
-              className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+              className="w-full rounded-xl border border-slate-200 bg-white/80 py-2.5 px-3 text-slate-900 shadow-inner shadow-slate-900/5 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-black/40 dark:focus:border-purple-500 dark:focus:ring-purple-500/30"
               value={endInputValue}
               onChange={(e) => {
                 const nextValue = e.target.value;
@@ -506,7 +506,7 @@ export default function BookingForm({
             : ""}
         </p>
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:from-sky-600 hover:via-blue-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:via-fuchsia-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           onClick={handleSubmit}
           disabled={isSaving || isDisabled}
         >

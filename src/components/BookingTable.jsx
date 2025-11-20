@@ -156,7 +156,7 @@ export default function BookingTable({
             <button
               type="button"
               onClick={() => setIsEmailMenuOpen((prev) => !prev)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow text-sm"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg shadow text-sm"
               aria-haspopup="true"
               aria-expanded={isEmailMenuOpen}
             >
@@ -171,14 +171,14 @@ export default function BookingTable({
                   <button
                     type="button"
                     onClick={() => handleSendEmail("web")}
-                    className="w-full rounded-md bg-blue-500 px-3 py-2 text-left text-sm font-medium text-white transition hover:bg-blue-600"
+                    className="w-full rounded-md bg-purple-600 px-3 py-2 text-left text-sm font-medium text-white transition hover:bg-purple-700"
                   >
                     Outlook 365 on the Web
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSendEmail("desktop")}
-                    className="w-full rounded-md bg-blue-100 px-3 py-2 text-left text-sm font-medium text-blue-700 transition hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/40"
+                    className="w-full rounded-md bg-purple-100 px-3 py-2 text-left text-sm font-medium text-purple-800 transition hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-200 dark:hover:bg-purple-900/40"
                   >
                     Outlook 365 Desktop
                   </button>
@@ -198,10 +198,10 @@ export default function BookingTable({
           <button
             type="button"
             onClick={() => setShowPastBookings((prev) => !prev)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg border shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-1 dark:focus:ring-offset-gray-800 ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-200 focus:ring-offset-1 dark:focus:ring-offset-gray-800 ${
               showPastBookings
-                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-                : "bg-white text-blue-600 border-blue-500 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300 dark:border-blue-400 dark:hover:bg-gray-700"
+                ? "bg-purple-600 text-white border-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
+                : "bg-white text-purple-700 border-purple-500 hover:bg-purple-50 dark:bg-gray-800 dark:text-purple-200 dark:border-purple-400 dark:hover:bg-gray-700"
             }`}
           >
             {showPastBookings ? "Hide Past Bookings" : "Show Past Bookings"}
@@ -256,7 +256,7 @@ export default function BookingTable({
                 <td className="border border-gray-100 p-2 text-center dark:border-gray-600">
                   <span
                     className={`px-2 py-1 rounded text-white text-xs font-medium ${
-                      r.type === "Vacation" ? "bg-green-500" : "bg-blue-500"
+                      r.type === "Vacation" ? "bg-green-500" : "bg-purple-600"
                     }`}
                   >
                     {r.type === "Vacation" ? "🌴 Vacation" : "✈️ Travel"}

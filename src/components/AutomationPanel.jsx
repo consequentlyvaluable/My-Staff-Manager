@@ -19,14 +19,14 @@ export default function AutomationPanel({
     <div className="space-y-4 rounded-2xl bg-white p-6 shadow transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <header className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-500 dark:text-blue-300">
+          <p className="text-xs font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-300">
             Workflow automation
           </p>
           <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
             Approvals, sync, and alerts
           </h3>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/50 dark:text-blue-100">
+        <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-700 dark:bg-purple-900/50 dark:text-purple-100">
           Live
         </span>
       </header>
@@ -79,7 +79,7 @@ export default function AutomationPanel({
                 </span>
               )}
               {settings.calendarSync.outlook && (
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-100">
+                <span className="rounded-full bg-purple-100 px-3 py-1 text-[11px] font-semibold text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
                   Outlook
                 </span>
               )}
@@ -129,7 +129,7 @@ export default function AutomationPanel({
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
             Upcoming capacity forecast (next {forecast.length} days)
           </p>
-          <span className="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold text-sky-700 dark:bg-sky-900/40 dark:text-sky-100">
+          <span className="rounded-full bg-purple-100 px-3 py-1 text-[11px] font-semibold text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
             Quotas: {settings.quotas.Vacation} PTO · {settings.quotas.Travel} travel
           </span>
         </div>
@@ -178,7 +178,7 @@ export default function AutomationPanel({
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100">
             Fast-track responses
           </span>
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100">
+          <span className="rounded-full bg-purple-100 px-3 py-1 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
             Shared Slack channel
           </span>
           <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-100">

@@ -133,7 +133,7 @@ export default function Reports({ records }) {
   const averageDurationLabel = averageDuration
     ? `${averageDuration.toFixed(1)} day${averageDuration >= 1.5 ? "s" : ""}`
     : "—";
-  const pieColors = ["#22c55e", "#3b82f6"];
+  const pieColors = ["#22c55e", "#8b5cf6"];
   const typeColors = { Vacation: pieColors[0], Travel: pieColors[1] };
   const summaryCards = [
     {
@@ -156,7 +156,7 @@ export default function Reports({ records }) {
           ? "Beginning within the next 30 days"
           : "No trips in the next month",
       icon: "🛫",
-      gradient: "from-sky-500/20 via-sky-500/10 to-sky-500/0",
+      gradient: "from-purple-500/20 via-purple-500/10 to-purple-500/0",
     },
     {
       title: "Average Duration",
