@@ -506,7 +506,7 @@ export default function BookingForm({
             : ""}
         </p>
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:via-fuchsia-600 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:via-fuchsia-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           onClick={handleSubmit}
           disabled={isSaving || isDisabled}
         >
