@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { handleLandingNavigation } from "../lib/landingNavigation";
+import approvalsScreenshot from "../assets/screenshot-approvals.svg";
+import calendarScreenshot from "../assets/screenshot-calendar.svg";
+import requestScreenshot from "../assets/screenshot-request.svg";
 
 const navigationLinks = [
   { label: "Product", href: "#product" },
   { label: "Workflow", href: "#workflow" },
-  { label: "Testimonials", href: "#testimonials" },
+  { label: "Screenshots", href: "#screenshots" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
@@ -75,18 +78,27 @@ const workflowSteps = [
   },
 ];
 
-const testimonials = [
+const screenshots = [
   {
-    quote:
-      "Offyse replaced a labyrinth of spreadsheets and Slack threads. Our producers can finally plan ahead, and approvals happen while we stay focused on client work.",
-    name: "Leah Patterson",
-    role: "Director of Operations, Northwind Studio",
+    title: "Team availability calendar",
+    description:
+      "Track approved time off, pending requests, holidays, and staffing thresholds in one view so managers can plan confidently.",
+    image: calendarScreenshot,
+    alt: "Calendar view showing scheduled time off and staffing levels.",
   },
   {
-    quote:
-      "The visibility into who is out each week reduced scheduling conflicts to almost zero. Our hybrid team feels aligned even when we're miles apart.",
-    name: "Mason Ortiz",
-    role: "Head of Delivery, Brightline Labs",
+    title: "Guided request workflow",
+    description:
+      "Employees submit context-rich requests in minutes with clear prompts, document uploads, and automatic routing.",
+    image: requestScreenshot,
+    alt: "Time-off request form with guided steps and summary panel.",
+  },
+  {
+    title: "Approval inbox",
+    description:
+      "Leads review conflicts, staffing impact, and policy checks side-by-side so approvals stay fast and transparent.",
+    image: approvalsScreenshot,
+    alt: "Manager approvals list with quick actions and policy highlights.",
   },
 ];
 
@@ -566,7 +578,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="testimonials" className="mx-auto max-w-6xl px-6">
+        <section id="screenshots" className="mx-auto max-w-6xl px-6">
           <div
             className={`rounded-[32px] border p-10 shadow-lg transition-colors ${
               isDarkMode
@@ -581,14 +593,14 @@ export default function LandingPage() {
                     isDarkMode ? "text-white" : "text-slate-900"
                   }`}
                 >
-                  Trusted by operations leaders who care about people
+                  See Offyse in action
                 </h2>
                 <p
                   className={`mt-4 text-lg ${
                     isDarkMode ? "text-slate-200" : "text-slate-600"
                   }`}
                 >
-                  From creative agencies to professional services firms, Offyse helps teams deliver on schedule while protecting employee wellbeing.
+                  Explore the core workflows your teams will use every day—built to keep requests clear, approvals quick, and schedules predictable.
                 </p>
               </div>
               <a
@@ -599,47 +611,51 @@ export default function LandingPage() {
                     : "bg-purple-600 text-white hover:bg-purple-500"
                 }`}
               >
-                Try Offyse for free
+                Book a live demo
               </a>
             </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              {testimonials.map((testimonial) => (
-                <blockquote
-                  key={testimonial.name}
-                  className={`flex h-full flex-col justify-between rounded-3xl border p-6 text-left transition ${
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {screenshots.map((screenshot) => (
+                <figure
+                  key={screenshot.title}
+                  className={`flex h-full flex-col overflow-hidden rounded-3xl border transition ${
                     isDarkMode
                       ? "border-white/5 bg-white/5 backdrop-blur"
                       : "border-slate-200 bg-white shadow-sm"
                   }`}
                 >
-                  <p
-                    className={`text-lg font-medium ${
-                      isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    “{testimonial.quote}”
-                  </p>
-                  <footer
-                    className={`mt-6 text-sm ${
-                      isDarkMode ? "text-slate-200/80" : "text-slate-600"
-                    }`}
-                  >
-                    <span
-                      className={`font-semibold ${
+                  <div className="relative bg-slate-950/40">
+                    <img
+                      src={screenshot.image}
+                      alt={screenshot.alt}
+                      loading="lazy"
+                      className="h-56 w-full object-cover"
+                    />
+                    <div className="absolute left-4 top-4 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/90 backdrop-blur">
+                      Product view
+                    </div>
+                  </div>
+                  <figcaption className="flex flex-1 flex-col p-6">
+                    <h3
+                      className={`text-xl font-semibold ${
                         isDarkMode ? "text-white" : "text-slate-900"
                       }`}
                     >
-                      {testimonial.name}
-                    </span>
-                    <span
-                      className={`block text-xs ${
-                        isDarkMode ? "text-slate-400/80" : "text-slate-500"
+                      {screenshot.title}
+                    </h3>
+                    <p
+                      className={`mt-3 text-sm leading-6 ${
+                        isDarkMode ? "text-slate-200/80" : "text-slate-600"
                       }`}
                     >
-                      {testimonial.role}
-                    </span>
-                  </footer>
-                </blockquote>
+                      {screenshot.description}
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-500">
+                      <span className="h-2 w-2 rounded-full bg-purple-500" aria-hidden />
+                      Included in every plan
+                    </div>
+                  </figcaption>
+                </figure>
               ))}
             </div>
           </div>
