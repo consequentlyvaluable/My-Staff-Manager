@@ -11,6 +11,7 @@ import ChangePasswordDialog from "./components/ChangePasswordDialog";
 import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
+import AutomationPanel from "./components/AutomationPanel";
 import { isAfter, isBefore, isEqual } from "date-fns";
 import {
   fetchRecords,
@@ -31,6 +32,13 @@ import {
   subscribeToBookingNotifications,
   broadcastBookingNotification,
 } from "./lib/supabaseClient";
+import {
+  defaultAutomationSettings,
+  deriveDecisionsForRecords,
+  evaluateBookingAgainstPolicies,
+  buildCapacityForecast,
+  summarizeDecisions,
+} from "./lib/policyEngine";
 
 const stripEmployeeLabel = (label) =>
   typeof label === "string" ? label.replace(/^\d+\.\s*/, "").trim() : "";
@@ -495,6 +503,9 @@ function StaffManagerApp() {
   const [changePasswordError, setChangePasswordError] = useState("");
   const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
   const [toasts, setToasts] = useState([]);
+  const [automationSettings] = useState(defaultAutomationSettings);
+  const [workflowDecisions, setWorkflowDecisions] = useState({});
+  const [capacityForecast, setCapacityForecast] = useState([]);
   const [calendarEditingId, setCalendarEditingId] = useState(null);
   const [calendarPopoverPosition, setCalendarPopoverPosition] = useState({
     top: 0,
@@ -705,6 +716,24 @@ function StaffManagerApp() {
     []
   );
 
+  const pushAutomationToast = useCallback((title, description, meta = null) => {
+    const toast = {
+      id: createUniqueId("toast"),
+      action: "automation",
+      title,
+      description,
+      meta,
+    };
+
+    setToasts((prev) => {
+      const next = [...prev, toast];
+      if (next.length > 5) {
+        next.shift();
+      }
+      return next;
+    });
+  }, []);
+
   const notifyBookingEvent = useCallback(
     async ({ action, booking }) => {
       if (!booking) return;
@@ -762,6 +791,11 @@ function StaffManagerApp() {
     if (allowedEmployeeList.length > 0) return allowedEmployeeList;
     return currentUser.employeeLabel ? [currentUser.employeeLabel] : [];
   }, [currentUser, employees, canManageAll, allowedEmployeeList]);
+
+  const workflowSummary = useMemo(
+    () => summarizeDecisions(workflowDecisions),
+    [workflowDecisions]
+  );
 
   const canCreateOrEdit = !isReadOnly && (canManageAll || canEditTeam || canEditSelf);
 
@@ -1115,6 +1149,11 @@ function StaffManagerApp() {
   }, [currentUser, handleIncomingNotification]);
 
   useEffect(() => {
+    setWorkflowDecisions(deriveDecisionsForRecords(records, automationSettings));
+    setCapacityForecast(buildCapacityForecast(records, automationSettings));
+  }, [records, automationSettings]);
+
+  useEffect(() => {
     if (editingId) return;
     setForm(createEmptyForm(currentUser?.employeeLabel ?? ""));
   }, [currentUser, editingId]);
@@ -1457,6 +1496,36 @@ function StaffManagerApp() {
             end: created.end ?? payload.end,
           };
           setRecords((prev) => [...prev, recordWithFallback]);
+        }
+        const decision = evaluateBookingAgainstPolicies(
+          recordWithFallback,
+          records,
+          automationSettings
+        );
+        setWorkflowDecisions((prev) => ({
+          ...prev,
+          [recordWithFallback.id ?? createUniqueId("booking")]: decision,
+        }));
+        if (decision.status === "auto_approved") {
+          pushAutomationToast(
+            "Auto-approved",
+            `${recordWithFallback.name || "New request"} was auto-approved with ${Math.round(
+              decision.utilization * 100
+            )}% capacity utilization.`,
+            decision.reason
+          );
+        } else if (decision.status === "declined_quota") {
+          pushAutomationToast(
+            "Declined by quota",
+            `${recordWithFallback.name || "Request"} cannot be scheduled because ${decision.reason.toLowerCase()}`,
+            "Notifications sent to Slack/Teams"
+          );
+        } else {
+          pushAutomationToast(
+            "Needs review",
+            `${recordWithFallback.name || "Request"} is queued for manager approval due to capacity thresholds.`,
+            decision.reason
+          );
         }
         await notifyBookingEvent({
           action: "created",
@@ -1875,6 +1944,7 @@ function StaffManagerApp() {
                 ) : (
                   <BookingTable
                     records={filteredSortedRecords}
+                    workflowDecisions={workflowDecisions}
                     search={search}
                     setSearch={setSearch}
                     sort={sort}
@@ -1890,7 +1960,12 @@ function StaffManagerApp() {
                   />
                 )}
               </div>
-              <div className="md:col-span-3">
+              <div className="md:col-span-3 space-y-6">
+                <AutomationPanel
+                  summary={workflowSummary}
+                  settings={automationSettings}
+                  forecast={capacityForecast}
+                />
                 <CalendarView
                   records={records}
                   currentDate={currentDate}
