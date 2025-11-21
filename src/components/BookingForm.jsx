@@ -506,12 +506,24 @@ export default function BookingForm({
             : ""}
         </p>
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:via-fuchsia-600 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          className="group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:shadow-purple-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-200 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           onClick={handleSubmit}
           disabled={isSaving || isDisabled}
         >
-          <span className="text-lg">{editingId ? "✓" : "+"}</span>
-          <span>{isSaving ? "Saving..." : editingId ? "Update booking" : "Add booking"}</span>
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-white/10 opacity-0 transition duration-300 group-hover:opacity-100"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-full w-24 -translate-x-full skew-x-12 bg-white/20 blur-md transition-transform duration-500 group-hover:translate-x-full"
+          />
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-base font-semibold shadow-inner shadow-white/10 ring-1 ring-white/20">
+            {editingId ? "✓" : "+"}
+          </span>
+          <span className="relative text-sm tracking-wide">
+            {isSaving ? "Saving..." : editingId ? "Update booking" : "Add booking"}
+          </span>
         </button>
       </div>
     </div>
