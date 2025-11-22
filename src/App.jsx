@@ -12,7 +12,7 @@ import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
-import { isAfter, isBefore, isEqual } from "date-fns";
+import { endOfDay, isAfter, isBefore, isEqual, startOfDay } from "date-fns";
 import {
   fetchRecords,
   createRecord,
@@ -796,6 +796,47 @@ function StaffManagerApp() {
     () => summarizeDecisions(workflowDecisions),
     [workflowDecisions]
   );
+
+  const outOfOfficeSummary = useMemo(() => {
+    const totalEmployees = employees.length;
+    if (totalEmployees === 0) {
+      return { totalEmployees: 0, outToday: 0, percentage: 0 };
+    }
+
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    const employeeSet = new Set(employees);
+    const outToday = new Set();
+
+    for (const record of records) {
+      const name = record?.name;
+      if (!name || !employeeSet.has(name)) continue;
+
+      const startDate = new Date(record.start);
+      const endDate = new Date(record.end);
+
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        continue;
+      }
+
+      const startsBeforeEnd =
+        isBefore(startDate, todayEnd) || isEqual(startDate, todayEnd);
+      const endsAfterStart =
+        isAfter(endDate, todayStart) || isEqual(endDate, todayStart);
+
+      if (startsBeforeEnd && endsAfterStart) {
+        outToday.add(name);
+      }
+    }
+
+    const percentage = Math.round((outToday.size / totalEmployees) * 100);
+
+    return {
+      totalEmployees,
+      outToday: outToday.size,
+      percentage: Math.min(100, Math.max(0, percentage)),
+    };
+  }, [employees, records]);
 
   const canCreateOrEdit = !isReadOnly && (canManageAll || canEditTeam || canEditSelf);
 
@@ -1899,6 +1940,7 @@ function StaffManagerApp() {
         user={currentUser}
         onLogout={handleLogout}
         onChangePassword={openChangePasswordDialog}
+        outOfOfficeSummary={outOfOfficeSummary}
       />
       <div className="flex flex-1">
         <Sidebar
