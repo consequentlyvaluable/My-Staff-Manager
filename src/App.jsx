@@ -12,7 +12,14 @@ import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
-import { endOfDay, isAfter, isBefore, isEqual, startOfDay } from "date-fns";
+import {
+  addDays,
+  endOfDay,
+  isAfter,
+  isBefore,
+  isEqual,
+  startOfDay,
+} from "date-fns";
 import {
   fetchRecords,
   createRecord,
@@ -800,13 +807,32 @@ function StaffManagerApp() {
   const outOfOfficeSummary = useMemo(() => {
     const totalEmployees = employees.length;
     if (totalEmployees === 0) {
-      return { totalEmployees: 0, outToday: 0, percentage: 0 };
+      return {
+        totalEmployees: 0,
+        outToday: 0,
+        outTomorrow: 0,
+        percentage: 0,
+        tomorrowPercentage: 0,
+      };
     }
 
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
+    const tomorrowStart = startOfDay(addDays(todayStart, 1));
+    const tomorrowEnd = endOfDay(tomorrowStart);
+
     const employeeSet = new Set(employees);
     const outToday = new Set();
+    const outTomorrow = new Set();
+
+    const isRecordInRange = (recordStart, recordEnd, rangeStart, rangeEnd) => {
+      const startsBeforeEnd =
+        isBefore(recordStart, rangeEnd) || isEqual(recordStart, rangeEnd);
+      const endsAfterStart =
+        isAfter(recordEnd, rangeStart) || isEqual(recordEnd, rangeStart);
+
+      return startsBeforeEnd && endsAfterStart;
+    };
 
     for (const record of records) {
       const name = record?.name;
@@ -819,22 +845,28 @@ function StaffManagerApp() {
         continue;
       }
 
-      const startsBeforeEnd =
-        isBefore(startDate, todayEnd) || isEqual(startDate, todayEnd);
-      const endsAfterStart =
-        isAfter(endDate, todayStart) || isEqual(endDate, todayStart);
-
-      if (startsBeforeEnd && endsAfterStart) {
+      if (isRecordInRange(startDate, endDate, todayStart, todayEnd)) {
         outToday.add(name);
+      }
+
+      if (
+        isRecordInRange(startDate, endDate, tomorrowStart, tomorrowEnd)
+      ) {
+        outTomorrow.add(name);
       }
     }
 
-    const percentage = Math.round((outToday.size / totalEmployees) * 100);
+    const todayPercentage = Math.round((outToday.size / totalEmployees) * 100);
+    const tomorrowPercentage = Math.round(
+      (outTomorrow.size / totalEmployees) * 100
+    );
 
     return {
       totalEmployees,
       outToday: outToday.size,
-      percentage: Math.min(100, Math.max(0, percentage)),
+      outTomorrow: outTomorrow.size,
+      percentage: Math.min(100, Math.max(0, todayPercentage)),
+      tomorrowPercentage: Math.min(100, Math.max(0, tomorrowPercentage)),
     };
   }, [employees, records]);
 
