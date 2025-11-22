@@ -7,6 +7,7 @@ export default function Header({
   user,
   onLogout,
   onChangePassword,
+  outOfOfficeSummary,
 }) {
   const initials = user?.name
     ? user.name
@@ -17,8 +18,18 @@ export default function Header({
         .join("") || "TM"
     : "TM";
 
+  const outToday = outOfOfficeSummary?.outToday ?? 0;
+  const totalEmployees = outOfOfficeSummary?.totalEmployees ?? 0;
+  const outPercentage = outOfOfficeSummary?.percentage ?? 0;
+  const outHelperLabel =
+    totalEmployees > 0
+      ? `${outToday} of ${totalEmployees} ${
+          totalEmployees === 1 ? "employee" : "employees"
+        }`
+      : "No employees yet";
+
   return (
-    <header className="bg-white shadow px-6 py-4 flex items-center justify-between transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
+    <header className="bg-white shadow px-6 py-4 flex flex-wrap items-center justify-between gap-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
       <div className="flex items-center gap-4">
         <button
           className="md:hidden p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -33,6 +44,19 @@ export default function Header({
         <h1 className="text-2xl font-bold text-purple-800 dark:text-purple-200">
           Offyse 🏢
         </h1>
+      </div>
+      <div className="flex flex-1 justify-center">
+        <div className="flex items-center gap-3 rounded-2xl bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-800 shadow-sm ring-1 ring-purple-100 transition-colors duration-300 dark:bg-purple-900/40 dark:text-purple-100 dark:ring-purple-800/60">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold">{outPercentage}%</span>
+            <span className="text-[0.7rem] uppercase tracking-wide text-purple-600 dark:text-purple-200/80">
+              Out today
+            </span>
+          </div>
+          <span className="text-xs font-normal text-purple-700 dark:text-purple-200/80">
+            {outHelperLabel}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <button
