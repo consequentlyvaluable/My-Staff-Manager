@@ -4,12 +4,60 @@ import approvalsScreenshot from "../assets/screenshot-approvals.svg";
 import calendarScreenshot from "../assets/screenshot-calendar.png";
 import requestScreenshot from "../assets/screenshot-request.svg";
 
-const navigationLinks = [
-  { label: "Product", href: "#product" },
-  { label: "Workflow", href: "#workflow" },
-  { label: "Screenshots", href: "#screenshots" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+const navigationMenu = [
+  {
+    label: "Product",
+    description: "Everything you need to run time off",
+    children: [
+      {
+        label: "Overview",
+        href: "#product",
+        description: "See how Offyse keeps every team aligned.",
+      },
+      {
+        label: "Workflow",
+        href: "#workflow",
+        description: "Guide requests, approvals, and reporting.",
+      },
+      {
+        label: "Screenshots",
+        href: "#screenshots",
+        description: "Preview the live experience before trying.",
+        children: [
+          { label: "Calendar clarity", href: "#screenshots" },
+          { label: "Guided requests", href: "#screenshots" },
+          { label: "Manager approvals", href: "#screenshots" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Pricing",
+    href: "#pricing",
+    description: "Simple, transparent pricing for every stage.",
+  },
+  {
+    label: "Resources",
+    description: "Learn more and get help fast",
+    children: [
+      {
+        label: "FAQ",
+        href: "#faq",
+        description: "Answers to the most common team questions.",
+      },
+      {
+        label: "Talk to sales",
+        href: "mailto:hello@offyse.com",
+        description: "Book a tailored walkthrough for your org.",
+      },
+      {
+        label: "Login",
+        href: "/login",
+        description: "Jump back into the scheduling workspace.",
+        isInternal: true,
+      },
+    ],
+  },
 ];
 
 const featureHighlights = [
@@ -196,6 +244,28 @@ export default function LandingPage() {
   }, [isDarkMode]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [expandedSubsections, setExpandedSubsections] = useState({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpenMenu(null);
+        setOpenSubmenu(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -214,6 +284,20 @@ export default function LandingPage() {
   }, []);
 
   const toggleTheme = () => setIsDarkMode((previous) => !previous);
+  const toggleSection = (label) =>
+    setExpandedSections((previous) => ({
+      ...previous,
+      [label]: !previous[label],
+    }));
+  const toggleSubsection = (parentLabel, childLabel) =>
+    setExpandedSubsections((previous) => ({
+      ...previous,
+      [`${parentLabel}-${childLabel}`]: !previous[`${parentLabel}-${childLabel}`],
+    }));
+  const resetMenus = () => {
+    setOpenMenu(null);
+    setOpenSubmenu(null);
+  };
 
   return (
     <div
@@ -276,21 +360,198 @@ export default function LandingPage() {
             <span>{isMenuOpen ? "Close" : "Menu"}</span>
           </button>
           <div
-            className={`hidden items-center gap-8 text-sm font-medium md:flex ${
+            className={`relative hidden items-center gap-4 text-sm font-medium md:flex ${
               isDarkMode ? "text-slate-200" : "text-slate-600"
             }`}
+            onMouseLeave={resetMenus}
           >
-            {navigationLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className={`${
-                  isDarkMode ? "hover:text-white" : "hover:text-slate-900"
-                } transition-colors`}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navigationMenu.map((item) => {
+              const hasChildren = (item.children?.length ?? 0) > 0;
+              const isOpen = openMenu === item.label;
+
+              const baseButtonClasses = `${
+                isDarkMode
+                  ? "hover:text-white focus-visible:text-white"
+                  : "hover:text-slate-900 focus-visible:text-slate-900"
+              } relative inline-flex items-center gap-2 rounded-full px-3 py-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                isDarkMode ? "focus-visible:outline-purple-400" : "focus-visible:outline-purple-500"
+              }`;
+
+              const menuSurfaceClasses = `${
+                isDarkMode
+                  ? "border-white/10 bg-slate-900/80 text-slate-100 shadow-slate-950/40"
+                  : "border-slate-200 bg-white text-slate-900 shadow-slate-200/60"
+              }`;
+
+              return (
+                <div key={item.label} className="relative">
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      className={baseButtonClasses}
+                      onMouseEnter={() => {
+                        setOpenMenu(item.label);
+                        setOpenSubmenu(null);
+                      }}
+                      onFocus={() => {
+                        setOpenMenu(item.label);
+                        setOpenSubmenu(null);
+                      }}
+                      onClick={() =>
+                        setOpenMenu((previous) => {
+                          if (previous === item.label) {
+                            setOpenSubmenu(null);
+                            return null;
+                          }
+                          setOpenSubmenu(null);
+                          return item.label;
+                        })
+                      }
+                      aria-expanded={isOpen}
+                      aria-haspopup
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-xs" aria-hidden>
+                        ▾
+                      </span>
+                    </button>
+                  ) : (
+                    <a
+                      className={baseButtonClasses}
+                      href={item.href}
+                      onClick={(event) => {
+                        if (item.isInternal) {
+                          handleLandingNavigation(event, item.href);
+                        }
+                        resetMenus();
+                      }}
+                    >
+                      {item.label}
+                    </a>
+                  )}
+
+                  {hasChildren ? (
+                    <div
+                      className={`absolute left-0 top-full z-20 mt-3 w-[320px] overflow-hidden rounded-2xl border shadow-lg transition-all duration-200 ${
+                        menuSurfaceClasses
+                      } ${
+                        isOpen
+                          ? "pointer-events-auto scale-100 opacity-100"
+                          : "pointer-events-none -translate-y-2 scale-95 opacity-0"
+                      }`}
+                      onMouseEnter={() => {
+                        setOpenMenu(item.label);
+                        setOpenSubmenu(null);
+                      }}
+                    >
+                      <div className="space-y-3 p-4">
+                        <p
+                          className={`text-xs uppercase tracking-[0.25em] ${
+                            isDarkMode ? "text-purple-200/80" : "text-purple-600"
+                          }`}
+                        >
+                          {item.description}
+                        </p>
+                        {item.children?.map((child) => {
+                          const childHasChildren = (child.children?.length ?? 0) > 0;
+                          const childIsOpen = openSubmenu === child.label && isOpen;
+                          const childKey = `${item.label}-${child.label}`;
+
+                          return (
+                            <div
+                              key={childKey}
+                              className={`rounded-xl border transition-colors ${
+                                isDarkMode
+                                  ? "border-white/5 bg-white/5 hover:border-purple-400/40"
+                                  : "border-slate-200 bg-white hover:border-purple-300"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3 p-3">
+                                <div className="space-y-1">
+                                  <a
+                                    href={child.href}
+                                    onClick={(event) => {
+                                      if (child.isInternal) {
+                                        handleLandingNavigation(event, child.href);
+                                      }
+                                      resetMenus();
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (childHasChildren) {
+                                        setOpenSubmenu(child.label);
+                                      }
+                                    }}
+                                    className={`text-base font-semibold transition-colors ${
+                                      isDarkMode ? "text-white" : "text-slate-900"
+                                    }`}
+                                  >
+                                    {child.label}
+                                  </a>
+                                  {child.description ? (
+                                    <p
+                                      className={`text-sm leading-relaxed ${
+                                        isDarkMode ? "text-slate-200/80" : "text-slate-600"
+                                      }`}
+                                    >
+                                      {child.description}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                {childHasChildren ? (
+                                  <button
+                                    type="button"
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${
+                                      isDarkMode
+                                        ? "bg-white/10 text-purple-200 hover:bg-white/20"
+                                        : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                                    }`}
+                                    aria-expanded={childIsOpen}
+                                    onMouseEnter={() => setOpenSubmenu(child.label)}
+                                    onClick={() =>
+                                      setOpenSubmenu((previous) =>
+                                        previous === child.label ? null : child.label
+                                      )
+                                    }
+                                  >
+                                    <span aria-hidden>{childIsOpen ? "–" : "+"}</span>
+                                    <span className="sr-only">Toggle nested menu</span>
+                                  </button>
+                                ) : null}
+                              </div>
+                              {childHasChildren ? (
+                                <div
+                                  className={`space-y-1 px-3 pb-3 transition-all duration-200 ${
+                                    childIsOpen
+                                      ? "max-h-40 opacity-100"
+                                      : "max-h-0 overflow-hidden opacity-0"
+                                  }`}
+                                >
+                                  {child.children.map((grandchild) => (
+                                    <a
+                                      key={`${childKey}-${grandchild.label}`}
+                                      href={grandchild.href}
+                                      onClick={resetMenus}
+                                      className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-white/10"
+                                          : "text-slate-700 hover:bg-purple-50"
+                                      }`}
+                                    >
+                                      <span>{grandchild.label}</span>
+                                      <span aria-hidden>→</span>
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
           <div className="hidden items-center gap-3 md:flex">
             <a
@@ -347,21 +608,173 @@ export default function LandingPage() {
                 : "border-slate-200 bg-white text-slate-800 shadow-slate-200/60"
             }`}
           >
-            <div className="grid grid-cols-2 gap-3 text-sm font-medium">
-              {navigationLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className={`rounded-full px-4 py-2 text-center transition ${
-                    isDarkMode
-                      ? "bg-white/5 hover:bg-white/10"
-                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {link.label}
-                </a>
-              ))}
+            <div className="space-y-2 text-sm font-medium">
+              {navigationMenu.map((item) => {
+                const hasChildren = (item.children?.length ?? 0) > 0;
+                const isExpanded = expandedSections[item.label];
+
+                const itemSurfaceClasses = `${
+                  isDarkMode
+                    ? "border-white/5 bg-white/5"
+                    : "border-slate-200 bg-purple-50/40"
+                }`;
+
+                if (!hasChildren) {
+                  return (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      onClick={(event) => {
+                        if (item.isInternal) {
+                          handleLandingNavigation(event, item.href);
+                        }
+                        setIsMenuOpen(false);
+                      }}
+                      className={`flex items-center justify-between rounded-2xl border px-4 py-4 transition ${
+                        itemSurfaceClasses
+                      } ${
+                        isDarkMode
+                          ? "text-slate-100 hover:border-purple-400/50 hover:bg-white/10"
+                          : "text-slate-800 hover:border-purple-300 hover:bg-purple-50"
+                      }`}
+                    >
+                      <div className="space-y-1 text-left">
+                        <span className="text-base font-semibold">{item.label}</span>
+                        {item.description ? (
+                          <p
+                            className={`text-xs ${
+                              isDarkMode ? "text-slate-300" : "text-slate-500"
+                            }`}
+                          >
+                            {item.description}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span aria-hidden>→</span>
+                    </a>
+                  );
+                }
+
+                return (
+                  <div
+                    key={item.label}
+                    className={`rounded-2xl border transition ${
+                      itemSurfaceClasses
+                    } ${
+                      isDarkMode
+                        ? "hover:border-purple-400/50 hover:bg-white/10"
+                        : "hover:border-purple-300 hover:bg-purple-50"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+                      onClick={() => toggleSection(item.label)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="space-y-1">
+                        <span className="text-base font-semibold">{item.label}</span>
+                        {item.description ? (
+                          <p
+                            className={`text-xs ${
+                              isDarkMode ? "text-slate-300" : "text-slate-500"
+                            }`}
+                          >
+                            {item.description}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span aria-hidden>{isExpanded ? "–" : "+"}</span>
+                    </button>
+                    <div
+                      className={`space-y-2 border-t px-4 pb-4 transition-all duration-200 ${
+                        isExpanded ? "max-h-96 opacity-100" : "max-h-0 overflow-hidden opacity-0"
+                      } ${isDarkMode ? "border-white/5" : "border-purple-100"}`}
+                    >
+                      {item.children.map((child) => {
+                        const childHasChildren = (child.children?.length ?? 0) > 0;
+                        const childKey = `${item.label}-${child.label}`;
+                        const childExpanded = expandedSubsections[childKey];
+
+                        return (
+                          <div
+                            key={childKey}
+                            className={`rounded-xl border transition ${
+                              isDarkMode
+                                ? "border-white/5 bg-white/5"
+                                : "border-purple-100 bg-white"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3 p-3">
+                              <div className="space-y-1">
+                                <a
+                                  href={child.href}
+                                  onClick={(event) => {
+                                    if (child.isInternal) {
+                                      handleLandingNavigation(event, child.href);
+                                    }
+                                    setIsMenuOpen(false);
+                                  }}
+                                  className={`text-base font-semibold ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {child.label}
+                                </a>
+                                {child.description ? (
+                                  <p
+                                    className={`text-xs ${
+                                      isDarkMode ? "text-slate-300" : "text-slate-500"
+                                    }`}
+                                  >
+                                    {child.description}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {childHasChildren ? (
+                                <button
+                                  type="button"
+                                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${
+                                    isDarkMode
+                                      ? "bg-white/10 text-purple-200 hover:bg-white/20"
+                                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                                  }`}
+                                  aria-expanded={childExpanded}
+                                  onClick={() => toggleSubsection(item.label, child.label)}
+                                >
+                                  <span aria-hidden>{childExpanded ? "–" : "+"}</span>
+                                  <span className="sr-only">Toggle nested menu</span>
+                                </button>
+                              ) : null}
+                            </div>
+                            {childHasChildren ? (
+                              <div
+                                className={`space-y-1 px-3 pb-3 transition-all duration-200 ${
+                                  childExpanded
+                                    ? "max-h-40 opacity-100"
+                                    : "max-h-0 overflow-hidden opacity-0"
+                                } ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                              >
+                                {child.children.map((grandchild) => (
+                                  <a
+                                    key={`${childKey}-${grandchild.label}`}
+                                    href={grandchild.href}
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-purple-50/40"
+                                  >
+                                    <span>{grandchild.label}</span>
+                                    <span aria-hidden>→</span>
+                                  </a>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <a
