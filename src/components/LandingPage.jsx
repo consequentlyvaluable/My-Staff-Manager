@@ -195,6 +195,8 @@ export default function LandingPage() {
     window.localStorage.setItem("landing-theme", isDarkMode ? "dark" : "light");
   }, [isDarkMode]);
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   useEffect(() => {
     const previousTitle = document.title;
     const root = document.documentElement;
@@ -257,6 +259,22 @@ export default function LandingPage() {
               Offyse 🏢
             </span>
           </a>
+          <button
+            type="button"
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium md:hidden ${
+              isDarkMode
+                ? "bg-slate-800/80 text-slate-100 shadow-black/40"
+                : "bg-white/80 text-slate-700 shadow-purple-100"
+            }`}
+            onClick={() => setIsMenuOpen((previous) => !previous)}
+            aria-expanded={isMenuOpen}
+            aria-label="Toggle navigation menu"
+          >
+            <span className="text-lg" aria-hidden>
+              {isMenuOpen ? "✕" : "☰"}
+            </span>
+            <span>{isMenuOpen ? "Close" : "Menu"}</span>
+          </button>
           <div
             className={`hidden items-center gap-8 text-sm font-medium md:flex ${
               isDarkMode ? "text-slate-200" : "text-slate-600"
@@ -321,6 +339,85 @@ export default function LandingPage() {
             </button>
           </div>
         </nav>
+        {isMenuOpen ? (
+          <div
+            className={`mx-auto mt-2 grid max-w-6xl gap-4 rounded-2xl border px-6 py-5 text-left shadow-lg md:hidden ${
+              isDarkMode
+                ? "border-white/5 bg-slate-900/80 text-slate-100 shadow-slate-950/40"
+                : "border-slate-200 bg-white text-slate-800 shadow-slate-200/60"
+            }`}
+          >
+            <div className="grid grid-cols-2 gap-3 text-sm font-medium">
+              {navigationLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className={`rounded-full px-4 py-2 text-center transition ${
+                    isDarkMode
+                      ? "bg-white/5 hover:bg-white/10"
+                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <a
+                href="/login"
+                onClick={(event) => {
+                  handleLandingNavigation(event, "/login");
+                  setIsMenuOpen(false);
+                }}
+                className={`rounded-full border px-4 py-3 text-center text-sm font-semibold transition ${
+                  isDarkMode
+                    ? "border-slate-500/60 text-slate-200 hover:border-purple-400 hover:text-white"
+                    : "border-slate-200 text-slate-700 hover:border-purple-400 hover:text-purple-600"
+                }`}
+              >
+                Login
+              </a>
+              <a
+                href="mailto:hello@offyse.com"
+                className={`rounded-full px-4 py-3 text-center text-sm font-semibold transition ${
+                  isDarkMode
+                    ? "bg-purple-500 text-white hover:bg-purple-400"
+                    : "bg-purple-600 text-white hover:bg-purple-500"
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Start free trial
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                toggleTheme();
+                setIsMenuOpen(false);
+              }}
+              className={`flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow transition ${
+                isDarkMode
+                  ? "bg-slate-800/80 text-slate-100 shadow-black/40 hover:bg-slate-800"
+                  : "bg-white/80 text-slate-700 shadow-purple-100 hover:bg-white"
+              }`}
+              aria-pressed={isDarkMode}
+            >
+              <span
+                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                  isDarkMode ? "bg-purple-500" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    isDarkMode ? "translate-x-5" : "translate-x-1"
+                  }`}
+                />
+              </span>
+              <span>{isDarkMode ? "Dark" : "Light"} Mode</span>
+            </button>
+          </div>
+        ) : null}
         <div className="relative mx-auto max-w-5xl px-6 pb-24 pt-10 text-center md:pt-20">
           <div className="mx-auto max-w-2xl">
             <span
