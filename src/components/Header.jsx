@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export default function Header({
   onSidebarToggle,
@@ -8,7 +8,12 @@ export default function Header({
   onLogout,
   onChangePassword,
   outOfOfficeSummary,
+  companyId,
+  onCompanyChange,
+  companyOptions = [],
 }) {
+  const companyInputId = useId();
+  const companyListId = useId();
   const initials = user?.name
     ? user.name
         .split(/\s+/)
@@ -35,6 +40,11 @@ export default function Header({
           totalEmployees === 1 ? "employee" : "employees"
         }`
       : "No employees yet";
+  const handleCompanyChange = (event) => {
+    if (typeof onCompanyChange !== "function") return;
+    onCompanyChange(event.target.value);
+  };
+  const hasCompanySelector = typeof onCompanyChange === "function";
 
   return (
     <header className="bg-white shadow px-6 py-4 flex flex-wrap items-center justify-between gap-4 transition-colors duration-300 dark:bg-gray-800 dark:shadow-black/20">
@@ -81,6 +91,33 @@ export default function Header({
         </div>
       </div>
       <div className="flex items-center gap-4">
+        {hasCompanySelector && (
+          <div className="flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200/80 transition-colors duration-200 dark:bg-gray-700/70 dark:text-gray-100 dark:ring-gray-600/80">
+            <label
+              className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-300"
+              htmlFor={companyInputId}
+            >
+              Company
+            </label>
+            <div className="relative">
+              <input
+                id={companyInputId}
+                list={companyOptions?.length ? companyListId : undefined}
+                value={companyId ?? ""}
+                onChange={handleCompanyChange}
+                placeholder="Enter company id"
+                className="w-40 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-inner focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-purple-400 dark:focus:ring-purple-400"
+              />
+              {companyOptions?.length ? (
+                <datalist id={companyListId}>
+                  {companyOptions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+              ) : null}
+            </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={onToggleDarkMode}

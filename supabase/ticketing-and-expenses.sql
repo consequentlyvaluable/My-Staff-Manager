@@ -65,3 +65,29 @@ drop trigger if exists expenses_set_updated_at on public.expenses;
 create trigger expenses_set_updated_at
 before update on public.expenses
 for each row execute function public.expenses_set_updated_at();
+
+-- Employee roster (tenant-aware)
+create table if not exists public.employee_roster (
+  id uuid primary key default gen_random_uuid(),
+  company_id text not null,
+  label text not null,
+  sort_order integer
+);
+
+create index if not exists employee_roster_company_id_idx on public.employee_roster (company_id);
+create index if not exists employee_roster_company_sort_idx on public.employee_roster (company_id, sort_order);
+
+alter table public.employee_roster enable row level security;
+
+drop policy if exists "Employee roster readable by company" on public.employee_roster;
+create policy "Employee roster readable by company"
+  on public.employee_roster
+  for select
+  using ((auth.jwt() ->> 'company_id') = company_id);
+
+drop policy if exists "Employee roster maintainers limited to company" on public.employee_roster;
+create policy "Employee roster maintainers limited to company"
+  on public.employee_roster
+  for all
+  using ((auth.jwt() ->> 'company_id') = company_id)
+  with check ((auth.jwt() ->> 'company_id') = company_id);

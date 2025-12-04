@@ -207,6 +207,10 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
       : () => "";
   const metadata = authUser.user_metadata ?? {};
   const email = profile?.email || authUser.email || metadata.email || "";
+  const companyId =
+    (typeof profile?.company_id === "string" && profile.company_id.trim()) ||
+    (typeof metadata.company_id === "string" && metadata.company_id.trim()) ||
+    "";
   const rawName =
     (typeof profile?.display_name === "string" && profile.display_name.trim()) ||
     (typeof metadata.full_name === "string" && metadata.full_name.trim()) ||
@@ -289,6 +293,7 @@ const buildUserContext = (authUser, profile, lookupEmployeeLabel = () => "") => 
     name,
     email,
     employeeLabel,
+    companyId,
     role: permissions.role,
     permissions,
     teamIdentifier,
@@ -484,6 +489,12 @@ function StaffManagerApp() {
     () => !!isSupabaseConfigured
   );
   const [employeesError, setEmployeesError] = useState(null);
+  const [companyId, setCompanyId] = useState(() => {
+    const envCompanyId = (import.meta.env.VITE_DEFAULT_COMPANY_ID || "").trim();
+    if (typeof window === "undefined") return envCompanyId;
+    const stored = window.localStorage.getItem("selectedCompanyId") || "";
+    return stored.trim() || envCompanyId;
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -529,6 +540,15 @@ function StaffManagerApp() {
   const [calendarEditSubmitting, setCalendarEditSubmitting] = useState(false);
   const calendarPopoverRef = useRef(null);
   const calendarPopoverFirstFieldRef = useRef(null);
+  const employeesTableName = useMemo(
+    () =>
+      (import.meta.env.VITE_SUPABASE_EMPLOYEES_TABLE || "Duferco Employees").trim(),
+    []
+  );
+  const companyOptions = useMemo(
+    () => toStringArray(import.meta.env.VITE_COMPANY_OPTIONS),
+    []
+  );
   const calendarEditingRecord = useMemo(
     () =>
       calendarEditingId
@@ -889,6 +909,10 @@ function StaffManagerApp() {
     return "You do not have permission to manage bookings.";
   }, [isReadOnly, canManageAll, canEditTeam, canEditSelf]);
 
+  const handleCompanyChange = useCallback((value) => {
+    setCompanyId((value ?? "").trim());
+  }, []);
+
   const employeeLookup = useMemo(
     () => buildEmployeeLookup(employees),
     [employees]
@@ -974,6 +998,21 @@ function StaffManagerApp() {
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (companyId) {
+      window.localStorage.setItem("selectedCompanyId", companyId);
+    } else {
+      window.localStorage.removeItem("selectedCompanyId");
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    const userCompanyId = currentUser?.companyId;
+    if (!userCompanyId || userCompanyId === companyId) return;
+    setCompanyId(userCompanyId);
+  }, [companyId, currentUser]);
+
+  useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
       root.classList.add("dark");
@@ -994,12 +1033,23 @@ function StaffManagerApp() {
       return;
     }
 
+    const trimmedCompanyId = companyId?.toString?.().trim?.() ?? "";
+    if (!trimmedCompanyId) {
+      setEmployees([]);
+      setLoadingEmployees(false);
+      setEmployeesError("Select a company to load employees.");
+      return;
+    }
+
     let ignore = false;
 
     const loadEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        const data = await fetchEmployees();
+        const data = await fetchEmployees({
+          tableName: employeesTableName,
+          companyId: trimmedCompanyId,
+        });
         if (ignore) return;
         setEmployees(data);
         setEmployeesError(null);
@@ -1020,7 +1070,7 @@ function StaffManagerApp() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [companyId, employeesTableName, isSupabaseConfigured]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -1974,6 +2024,9 @@ function StaffManagerApp() {
         onLogout={handleLogout}
         onChangePassword={openChangePasswordDialog}
         outOfOfficeSummary={outOfOfficeSummary}
+        companyId={companyId}
+        onCompanyChange={handleCompanyChange}
+        companyOptions={companyOptions}
       />
       <div className="flex flex-1">
         <Sidebar
