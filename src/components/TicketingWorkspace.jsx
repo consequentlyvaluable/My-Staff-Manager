@@ -18,7 +18,7 @@ const statusColors = {
 const priorityOrder = ["Critical", "High", "Medium", "Low"];
 const statusOrder = ["New", "In Progress", "Waiting", "Resolved", "Closed"];
 
-export default function TicketingWorkspace({ currentUser }) {
+export default function TicketingWorkspace({ currentUser, onToast }) {
   const [tickets, setTickets] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -63,7 +63,18 @@ export default function TicketingWorkspace({ currentUser }) {
     return totals;
   }, [tickets]);
 
+  const notifyTicketToast = (action, ticket, meta) => {
+    if (typeof onToast !== "function" || !ticket) return;
+    onToast({
+      action,
+      title: action === "created" ? "Ticket logged" : "Ticket updated",
+      description: `${ticket.id} · ${ticket.title}`,
+      meta,
+    });
+  };
+
   const handleStatusChange = (id, status) => {
+    const target = tickets.find((ticket) => ticket.id === id);
     setTickets((prev) =>
       prev.map((ticket) =>
         ticket.id === id
@@ -71,6 +82,10 @@ export default function TicketingWorkspace({ currentUser }) {
           : ticket
       )
     );
+
+    if (target) {
+      notifyTicketToast("updated", { ...target, status }, `Status → ${status}`);
+    }
   };
 
   const handleNewTicketSubmit = (event) => {
@@ -82,21 +97,25 @@ export default function TicketingWorkspace({ currentUser }) {
     const padded = String(tickets.length + 1045).padStart(4, "0");
     const id = `${prefix}-${padded}`;
 
-    setTickets((prev) => [
-      {
-        id,
-        title: newTicket.title.trim(),
-        description: newTicket.description.trim(),
-        priority: newTicket.priority,
-        status: "New",
-        requester: newTicket.requester || "Unspecified",
-        assignee: "Unassigned",
-        category: newTicket.category,
-        createdAt: now,
-        updatedAt: now,
-      },
-      ...prev,
-    ]);
+    const ticket = {
+      id,
+      title: newTicket.title.trim(),
+      description: newTicket.description.trim(),
+      priority: newTicket.priority,
+      status: "New",
+      requester: newTicket.requester || "Unspecified",
+      assignee: "Unassigned",
+      category: newTicket.category,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setTickets((prev) => [ticket, ...prev]);
+    notifyTicketToast(
+      "created",
+      ticket,
+      `${ticket.priority} priority · ${ticket.category}`
+    );
 
     setNewTicket({
       title: "",

@@ -605,6 +605,19 @@ function StaffManagerApp() {
     [canModifyEmployee]
   );
 
+  const pushToast = useCallback((toast) => {
+    if (!toast) return;
+    const normalized = toast.id ? toast : { ...toast, id: createUniqueId("toast") };
+
+    setToasts((prev) => {
+      const next = [...prev, normalized];
+      if (next.length > 5) {
+        next.shift();
+      }
+      return next;
+    });
+  }, []);
+
   const dismissToast = useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
@@ -707,41 +720,27 @@ function StaffManagerApp() {
       const meta = range && range !== "-" ? range : null;
 
       const toast = {
-        id: createUniqueId("toast"),
         action: normalizedAction,
         title: `${actorName} ${actionVerb} a booking`,
         description: `Booking for ${bookingName} · ${bookingType}`,
         meta,
       };
 
-      setToasts((prev) => {
-        const next = [...prev, toast];
-        if (next.length > 5) {
-          next.shift();
-        }
-        return next;
-      });
+      pushToast(toast);
     },
-    []
+    [pushToast]
   );
 
   const pushAutomationToast = useCallback((title, description, meta = null) => {
     const toast = {
-      id: createUniqueId("toast"),
       action: "automation",
       title,
       description,
       meta,
     };
 
-    setToasts((prev) => {
-      const next = [...prev, toast];
-      if (next.length > 5) {
-        next.shift();
-      }
-      return next;
-    });
-  }, []);
+    pushToast(toast);
+  }, [pushToast]);
 
   const notifyBookingEvent = useCallback(
     async ({ action, booking }) => {
@@ -2078,10 +2077,10 @@ function StaffManagerApp() {
           )}
           {currentPage === "reports" && <Reports records={records} />}
           {currentPage === "expenses" && (
-            <ExpenseReports currentUser={currentUser} />
+            <ExpenseReports currentUser={currentUser} onToast={pushToast} />
           )}
           {currentPage === "ticketing" && (
-            <TicketingWorkspace currentUser={currentUser} />
+            <TicketingWorkspace currentUser={currentUser} onToast={pushToast} />
           )}
           {currentPage === "automation" && (
             <div className="space-y-6">
