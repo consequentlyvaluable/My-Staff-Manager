@@ -12,6 +12,7 @@ import LoginPage from "./components/LoginPage";
 import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
+import TicketingWorkspace from "./components/TicketingWorkspace";
 import {
   addDays,
   endOfDay,
@@ -2075,6 +2076,9 @@ function StaffManagerApp() {
             </div>
           )}
           {currentPage === "reports" && <Reports records={records} />}
+          {currentPage === "ticketing" && (
+            <TicketingWorkspace currentUser={currentUser} />
+          )}
           {currentPage === "automation" && (
             <div className="space-y-6">
               <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-colors duration-300 dark:border-slate-700/60 dark:bg-slate-900/70 dark:shadow-black/30">
