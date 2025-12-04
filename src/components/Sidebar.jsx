@@ -27,7 +27,7 @@ export default function Sidebar({
           </button>
         </div>
         <nav className="space-y-2">
-          {["dashboard", "employees", "reports", "automation"].map((page) => (
+          {["dashboard", "employees", "ticketing", "reports", "automation"].map((page) => (
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
