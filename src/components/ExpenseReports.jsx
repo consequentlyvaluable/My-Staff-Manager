@@ -70,7 +70,7 @@ const deriveMerchant = (text = "") => {
     .join(" ");
 };
 
-export default function ExpenseReports({ currentUser }) {
+export default function ExpenseReports({ currentUser, onToast }) {
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState(defaultForm);
   const [receiptFile, setReceiptFile] = useState(null);
@@ -108,6 +108,20 @@ export default function ExpenseReports({ currentUser }) {
 
   const updateForm = (field, value) => {
     setForm((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const notifyExpenseToast = (action, expense, meta) => {
+    if (typeof onToast !== "function" || !expense) return;
+    const amount = Number.isFinite(expense.amount)
+      ? expense.amount.toFixed(2)
+      : "0.00";
+
+    onToast({
+      action,
+      title: action === "created" ? "Expense report added" : "Expense updated",
+      description: `${expense.merchant} · ${expense.currency || "USD"} ${amount}`,
+      meta,
+    });
   };
 
   const handleReceipt = (event) => {
@@ -174,6 +188,11 @@ export default function ExpenseReports({ currentUser }) {
       amount: safeAmount,
     };
     setExpenses((previous) => [newExpense, ...previous]);
+    notifyExpenseToast(
+      "created",
+      newExpense,
+      `${newExpense.date} · Status: ${newExpense.status}`
+    );
     setForm(defaultForm());
     setReceiptFile(null);
     setScanMessage("");
@@ -181,9 +200,14 @@ export default function ExpenseReports({ currentUser }) {
   };
 
   const updateStatus = (id, status) => {
+    const target = expenses.find((expense) => expense.id === id);
     setExpenses((previous) =>
       previous.map((expense) => (expense.id === id ? { ...expense, status } : expense))
     );
+
+    if (target) {
+      notifyExpenseToast("updated", { ...target, status }, `Status → ${status}`);
+    }
   };
 
   return (
