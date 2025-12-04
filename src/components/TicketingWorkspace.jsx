@@ -1,45 +1,5 @@
 import { useMemo, useState } from "react";
 
-const defaultTickets = [
-  {
-    id: "INC-1042",
-    title: "VPN access failing for remote staff",
-    description:
-      "Multiple users report intermittent VPN drops when switching networks.",
-    priority: "High",
-    status: "In Progress",
-    requester: "alex.tan@offyse.com",
-    assignee: "Jordan Lee",
-    category: "Network",
-    createdAt: "2024-03-02T10:30:00Z",
-    updatedAt: "2024-03-04T16:00:00Z",
-  },
-  {
-    id: "REQ-2338",
-    title: "Laptop request for new hire",
-    description: "MacBook Air required for onboarding starting next Monday.",
-    priority: "Medium",
-    status: "Waiting",
-    requester: "nina.owens@offyse.com",
-    assignee: "Procurement Queue",
-    category: "Hardware",
-    createdAt: "2024-03-05T09:00:00Z",
-    updatedAt: "2024-03-06T12:00:00Z",
-  },
-  {
-    id: "INC-1043",
-    title: "Password reset assistance",
-    description: "User locked out after MFA failure; needs manual reset.",
-    priority: "Low",
-    status: "Resolved",
-    requester: "dave.mills@offyse.com",
-    assignee: "IT Support",
-    category: "Access",
-    createdAt: "2024-03-03T14:10:00Z",
-    updatedAt: "2024-03-03T15:20:00Z",
-  },
-];
-
 const priorityColors = {
   Critical: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/20 dark:text-red-100 dark:border-red-500/40",
   High: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/20 dark:text-orange-100 dark:border-orange-500/40",
@@ -59,7 +19,7 @@ const priorityOrder = ["Critical", "High", "Medium", "Low"];
 const statusOrder = ["New", "In Progress", "Waiting", "Resolved", "Closed"];
 
 export default function TicketingWorkspace({ currentUser }) {
-  const [tickets, setTickets] = useState(defaultTickets);
+  const [tickets, setTickets] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
