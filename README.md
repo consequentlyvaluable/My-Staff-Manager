@@ -28,6 +28,10 @@ An opinionated React + Tailwind dashboard for scheduling and managing employee a
    ```bash
    VITE_SUPABASE_URL=your-project-url
    VITE_SUPABASE_ANON_KEY=your-anon-key
+   # Optional: customise the roster source and default tenant
+   VITE_SUPABASE_EMPLOYEES_TABLE=employee_roster
+   VITE_DEFAULT_COMPANY_ID=your-company-id
+   VITE_COMPANY_OPTIONS=company-a,company-b
    ```
 
    The app ships with demo credentials for local previews, but you should override them in production.
@@ -64,7 +68,7 @@ Follow these steps to provision the Supabase side so the "Forgot password" flow 
 5. **Create supporting tables** if you have not already:
    - `employee_profiles` with columns such as `id`, `user_id`, `email`, `employee_label`, and any metadata you surface in the UI.
    - `records` for schedule/booking entries referenced throughout the dashboard.
-   - `Duferco Employees` (or your workforce lookup) with `label` + `sort_order`.
+   - A workforce lookup table (defaults to `Duferco Employees`, configurable via `VITE_SUPABASE_EMPLOYEES_TABLE`) that includes `company_id`, `label`, and `sort_order`. Add an index on `company_id` and enable RLS to restrict access per tenant, for example by comparing `auth.jwt()->>'company_id'` to the table's `company_id`.
    - Enable Row-Level Security and create policies that restrict reads/writes to authenticated users as appropriate for your organisation.
 
 6. **Grant PostgREST access**

@@ -33,7 +33,8 @@ let bookingNotificationChannel = null;
 let bookingChannelPromise = null;
 let isBookingChannelJoined = false;
 
-const DUFERCO_EMPLOYEES_TABLE = "Duferco Employees";
+const DEFAULT_EMPLOYEES_TABLE =
+  (import.meta.env.VITE_SUPABASE_EMPLOYEES_TABLE || "Duferco Employees").trim();
 
 const baseHeaders = isSupabaseConfigured
   ? {
@@ -739,15 +740,24 @@ export const fetchEmployeeProfile = async ({ userId, email }) => {
   return null;
 };
 
-export const fetchEmployees = async () => {
+export const fetchEmployees = async ({
+  tableName = DEFAULT_EMPLOYEES_TABLE,
+  companyId,
+} = {}) => {
   const params = new URLSearchParams();
   params.set("select", "label,sort_order");
   params.append("order", "sort_order.asc");
   params.append("order", "label.asc");
 
-  const data = await request(
-    `${encodeURIComponent(DUFERCO_EMPLOYEES_TABLE)}?${params.toString()}`
-  );
+  const trimmedCompanyId = companyId?.toString?.().trim?.() ?? "";
+  if (trimmedCompanyId) {
+    params.set("company_id", `eq.${trimmedCompanyId}`);
+  }
+
+  const resolvedTable = tableName || DEFAULT_EMPLOYEES_TABLE;
+  const encodedTable = encodeURIComponent(resolvedTable);
+
+  const data = await request(`${encodedTable}?${params.toString()}`);
 
   if (!Array.isArray(data)) {
     return [];
