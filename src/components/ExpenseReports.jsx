@@ -42,45 +42,6 @@ const statusBadges = {
   Rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200",
 };
 
-const seededExpenses = [
-  {
-    id: "exp-001",
-    merchant: "Acme Airlines",
-    date: "2024-12-02",
-    category: "Travel",
-    amount: 482.25,
-    currency: "USD",
-    status: "Approved",
-    notes: "Round-trip flight to HQ",
-    receiptText: "Boarding pass ACME 482.25",
-    receiptImage: "",
-  },
-  {
-    id: "exp-002",
-    merchant: "City Hotel",
-    date: "2024-12-03",
-    category: "Lodging",
-    amount: 289.9,
-    currency: "USD",
-    status: "Submitted",
-    notes: "2 nights standard room",
-    receiptText: "Room 412 - 289.90",
-    receiptImage: "",
-  },
-  {
-    id: "exp-003",
-    merchant: "Coffee Corner",
-    date: "2024-12-04",
-    category: "Meals",
-    amount: 18.75,
-    currency: "USD",
-    status: "Reimbursed",
-    notes: "Team sync breakfast",
-    receiptText: "Latte 6.50, Sandwich 12.25",
-    receiptImage: "",
-  },
-];
-
 const extractLikelyAmount = (text = "") => {
   const candidates = [...text.matchAll(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))/g)].map(
     (match) => match[1] ?? ""
@@ -110,7 +71,7 @@ const deriveMerchant = (text = "") => {
 };
 
 export default function ExpenseReports({ currentUser }) {
-  const [expenses, setExpenses] = useState(seededExpenses);
+  const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState(defaultForm);
   const [receiptFile, setReceiptFile] = useState(null);
   const [scanMessage, setScanMessage] = useState("");
