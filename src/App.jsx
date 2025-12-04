@@ -13,6 +13,7 @@ import ToastStack from "./components/ToastStack";
 import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
 import TicketingWorkspace from "./components/TicketingWorkspace";
+import ExpenseReports from "./components/ExpenseReports";
 import {
   addDays,
   endOfDay,
@@ -2076,6 +2077,9 @@ function StaffManagerApp() {
             </div>
           )}
           {currentPage === "reports" && <Reports records={records} />}
+          {currentPage === "expenses" && (
+            <ExpenseReports currentUser={currentUser} />
+          )}
           {currentPage === "ticketing" && (
             <TicketingWorkspace currentUser={currentUser} />
           )}
