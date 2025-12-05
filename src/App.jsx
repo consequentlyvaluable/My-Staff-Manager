@@ -14,6 +14,7 @@ import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
 import TicketingWorkspace from "./components/TicketingWorkspace";
 import ExpenseReports from "./components/ExpenseReports";
+import SpreadsheetLab from "./components/SpreadsheetLab";
 import {
   addDays,
   endOfDay,
@@ -2132,6 +2133,7 @@ function StaffManagerApp() {
           {currentPage === "expenses" && (
             <ExpenseReports currentUser={currentUser} onToast={pushToast} />
           )}
+          {currentPage === "spreadsheet" && <SpreadsheetLab />}
           {currentPage === "ticketing" && (
             <TicketingWorkspace currentUser={currentUser} onToast={pushToast} />
           )}
