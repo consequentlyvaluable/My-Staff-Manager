@@ -38,6 +38,7 @@ import {
   updateEmployeePassword,
   fetchEmployeeProfile,
   getActiveSession,
+  clearStoredSession,
   restoreSession,
   requestPasswordReset,
   completeAuthFromHash,
@@ -1187,9 +1188,23 @@ function StaffManagerApp() {
 
     const hydrateUser = async () => {
       setIsAuthRestoring(true);
+      let timeoutId;
+      const restoreTimeoutMs = 8000;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error("Supabase session restore timed out."));
+        }, restoreTimeoutMs);
+      });
+
       try {
-        const session = await restoreSession();
-        if (!session?.user || ignore) return;
+        const session = await Promise.race([restoreSession(), timeoutPromise]);
+        if (ignore) return;
+
+        if (!session?.user) {
+          clearStoredSession();
+          return;
+        }
+
         const profile = await fetchEmployeeProfile({
           userId: session.user.id,
           email: session.user.email,
@@ -1203,8 +1218,12 @@ function StaffManagerApp() {
         setCurrentUser(userContext);
         setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
       } catch (error) {
-        console.warn("Failed to restore Supabase session", error);
+        if (!ignore) {
+          console.warn("Failed to restore Supabase session", error);
+          clearStoredSession();
+        }
       } finally {
+        window.clearTimeout(timeoutId);
         if (!ignore) {
           setIsAuthRestoring(false);
         }

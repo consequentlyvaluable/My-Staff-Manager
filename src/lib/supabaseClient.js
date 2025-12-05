@@ -351,6 +351,10 @@ export const broadcastBookingNotification = async (payload) => {
 
 export const getActiveSession = () => getStoredSession();
 
+export const clearStoredSession = () => {
+  persistSession(null);
+};
+
 export const restoreSession = async () => {
   if (!isSupabaseConfigured) return null;
 
