@@ -14,6 +14,7 @@ import LandingPage from "./components/LandingPage";
 import AutomationPanel from "./components/AutomationPanel";
 import TicketingWorkspace from "./components/TicketingWorkspace";
 import ExpenseReports from "./components/ExpenseReports";
+import WordTool from "./components/WordTool";
 import {
   addDays,
   endOfDay,
@@ -2155,6 +2156,7 @@ function StaffManagerApp() {
               />
             </div>
           )}
+          {currentPage === "word" && <WordTool />}
         </main>
       </div>
       {calendarEditingId && calendarEditingRecord && (
