@@ -123,6 +123,10 @@ const shouldRenderLandingPage = () => {
     return true;
   }
 
+  if (hostname === "offyse.netlify.app" || hostname === "www.offyse.netlify.app") {
+    return true;
+  }
+
   if (
     hostname.startsWith("landing.") &&
     (hostname.endsWith(".localhost") ||
