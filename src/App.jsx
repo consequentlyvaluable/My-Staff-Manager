@@ -15,6 +15,7 @@ import AutomationPanel from "./components/AutomationPanel";
 import TicketingWorkspace from "./components/TicketingWorkspace";
 import ExpenseReports from "./components/ExpenseReports";
 import SpreadsheetLab from "./components/SpreadsheetLab";
+import WordWorkspace from "./components/WordWorkspace";
 import {
   addDays,
   endOfDay,
@@ -2134,6 +2135,7 @@ function StaffManagerApp() {
             <ExpenseReports currentUser={currentUser} onToast={pushToast} />
           )}
           {currentPage === "spreadsheet" && <SpreadsheetLab />}
+          {currentPage === "word" && <WordWorkspace />}
           {currentPage === "ticketing" && (
             <TicketingWorkspace currentUser={currentUser} onToast={pushToast} />
           )}
