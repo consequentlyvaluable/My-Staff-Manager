@@ -1169,7 +1169,7 @@ function StaffManagerApp() {
     return () => {
       ignore = true;
     };
-  }, [lookupEmployeeLabel]);
+  }, [lookupEmployeeLabel, pushToast]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -1190,29 +1190,46 @@ function StaffManagerApp() {
       setIsAuthRestoring(true);
       let timeoutId;
       const restoreTimeoutMs = 8000;
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = window.setTimeout(() => {
-          reject(new Error("Supabase session restore timed out."));
-        }, restoreTimeoutMs);
-      });
+
+      const withDeadline = (promise) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) => {
+            timeoutId = window.setTimeout(() => {
+              reject(new Error("Supabase session restore timed out."));
+            }, restoreTimeoutMs);
+          }),
+        ]);
 
       try {
-        const session = await Promise.race([restoreSession(), timeoutPromise]);
+        const result = await withDeadline(
+          (async () => {
+            const session = await restoreSession();
+            if (!session?.user) {
+              return { session: null, profile: null };
+            }
+
+            const profile = await fetchEmployeeProfile({
+              userId: session.user.id,
+              email: session.user.email,
+            });
+
+            return { session, profile };
+          })()
+        );
+
         if (ignore) return;
 
-        if (!session?.user) {
+        if (!result?.session?.user) {
           clearStoredSession();
+          setCurrentUser(null);
+          setForm(createEmptyForm());
           return;
         }
 
-        const profile = await fetchEmployeeProfile({
-          userId: session.user.id,
-          email: session.user.email,
-        });
-        if (ignore) return;
         const userContext = buildUserContext(
-          session.user,
-          profile,
+          result.session.user,
+          result.profile,
           lookupEmployeeLabel
         );
         setCurrentUser(userContext);
@@ -1221,6 +1238,14 @@ function StaffManagerApp() {
         if (!ignore) {
           console.warn("Failed to restore Supabase session", error);
           clearStoredSession();
+          setCurrentUser(null);
+          setForm(createEmptyForm());
+          pushToast({
+            action: "error",
+            title: "Session restore failed",
+            description: "We couldn't restore your session. Please sign in again.",
+            meta: error?.message ?? "", 
+          });
         }
       } finally {
         window.clearTimeout(timeoutId);
