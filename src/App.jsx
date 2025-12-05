@@ -37,6 +37,7 @@ import {
   signOutEmployee,
   updateEmployeePassword,
   fetchEmployeeProfile,
+  getActiveSession,
   restoreSession,
   requestPasswordReset,
   completeAuthFromHash,
@@ -515,6 +516,12 @@ function StaffManagerApp() {
     if (stored) return stored === "dark";
     return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
   });
+  const [bootstrappedSessionUser] = useState(() =>
+    isSupabaseConfigured ? getActiveSession()?.user ?? null : null
+  );
+  const [isAuthRestoring, setIsAuthRestoring] = useState(
+    () => !!isSupabaseConfigured
+  );
   const [currentUser, setCurrentUser] = useState(null);
   const [form, setForm] = useState(() => createEmptyForm());
   const [editingId, setEditingId] = useState(null);
@@ -546,6 +553,7 @@ function StaffManagerApp() {
   const [calendarEditSubmitting, setCalendarEditSubmitting] = useState(false);
   const calendarPopoverRef = useRef(null);
   const calendarPopoverFirstFieldRef = useRef(null);
+  const hasAttemptedAuthRestore = useRef(false);
   const employeesTableName = useMemo(
     () =>
       (import.meta.env.VITE_SUPABASE_EMPLOYEES_TABLE || "Duferco Employees").trim(),
@@ -934,6 +942,21 @@ function StaffManagerApp() {
     [employeeLookup]
   );
 
+  useEffect(() => {
+    if (!bootstrappedSessionUser) return;
+
+    setCurrentUser((prev) => {
+      if (prev) return prev;
+      const userContext = buildUserContext(
+        bootstrappedSessionUser,
+        null,
+        lookupEmployeeLabel
+      );
+      setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
+      return userContext;
+    });
+  }, [bootstrappedSessionUser, lookupEmployeeLabel]);
+
   const openChangePasswordDialog = () => {
     setChangePasswordOpen(true);
     setChangePasswordError("");
@@ -1079,7 +1102,10 @@ function StaffManagerApp() {
   }, [companyId, employeesTableName, isSupabaseConfigured]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setIsAuthRestoring(false);
+      return;
+    }
     if (typeof window === "undefined") return;
 
     let ignore = false;
@@ -1145,11 +1171,22 @@ function StaffManagerApp() {
   }, [lookupEmployeeLabel]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setIsAuthRestoring(false);
+      hasAttemptedAuthRestore.current = true;
+      return;
+    }
+
+    if (hasAttemptedAuthRestore.current) {
+      return;
+    }
+
+    hasAttemptedAuthRestore.current = true;
 
     let ignore = false;
 
     const hydrateUser = async () => {
+      setIsAuthRestoring(true);
       try {
         const session = await restoreSession();
         if (!session?.user || ignore) return;
@@ -1167,6 +1204,10 @@ function StaffManagerApp() {
         setForm(createEmptyForm(userContext?.employeeLabel ?? ""));
       } catch (error) {
         console.warn("Failed to restore Supabase session", error);
+      } finally {
+        if (!ignore) {
+          setIsAuthRestoring(false);
+        }
       }
     };
 
@@ -2005,6 +2046,19 @@ function StaffManagerApp() {
     setChangePasswordError("");
     setChangePasswordSuccess("");
   };
+
+  if (isAuthRestoring) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+        <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
+          <div className="h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Loading your workspace...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
